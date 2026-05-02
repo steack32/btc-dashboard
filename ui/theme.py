@@ -275,6 +275,33 @@ def apply_theme() -> None:
             padding-top: 1.5rem;
             border-top: 1px solid {PALETTE['border']};
         }}
+
+        /* Scrollbar orange Bitcoin (Chromium/WebKit) */
+        ::-webkit-scrollbar {{
+            width: 10px;
+            height: 10px;
+        }}
+        ::-webkit-scrollbar-track {{
+            background: {PALETTE['bg']};
+            border-left: 1px solid {PALETTE['border']};
+        }}
+        ::-webkit-scrollbar-thumb {{
+            background: {PALETTE['accent']};
+            border-radius: 6px;
+            border: 2px solid {PALETTE['bg']};
+        }}
+        ::-webkit-scrollbar-thumb:hover {{
+            background: {PALETTE['accent_soft']};
+        }}
+        ::-webkit-scrollbar-corner {{
+            background: {PALETTE['bg']};
+        }}
+
+        /* Firefox */
+        * {{
+            scrollbar-width: thin;
+            scrollbar-color: {PALETTE['accent']} {PALETTE['bg']};
+        }}
     </style>
     <div id="btc-top-bar"></div>
     """

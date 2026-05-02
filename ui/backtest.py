@@ -366,8 +366,9 @@ def render_strategy_simulation(
 
     st.plotly_chart(_strategy_chart(sim, dca, bh), use_container_width=True, config=CHART_CONFIG)
 
-    st.caption(
+    caption = (
         f"Sur la période : **{n_buys} jours d'achat** ({total_bought:,.0f} € investis cumulés) · "
         f"**{n_sells} jours de vente** ({total_sold:,.0f} € sécurisés cumulés). "
         "Note : la simulation traite € ≈ $ pour simplifier (BTC est libellé en USD dans la source)."
     ).replace(",", " ")
+    st.caption(caption)
