@@ -9,10 +9,12 @@ from datetime import datetime
 import pandas as pd
 import streamlit as st
 
+from analysis import backtest as bt
 from analysis import indicators as ind
 from analysis import scoring as sc
 from config import PALETTE
 from data import sources as ds
+from ui.backtest import render_backtest
 from ui.header import render_header
 from ui.sections import (
     render_technique,
@@ -244,6 +246,11 @@ def main() -> None:
     render_macro(scores, data)
     render_sentiment(scores, data)
     render_summary_table(scores_list)
+
+    # Backtest historique : calcul vectorisé rapide (<200ms sur 8 ans).
+    # Le cache de load_all_data() évite déjà les appels API en double.
+    history = bt.compute_historical_scores(data)
+    render_backtest(history)
 
     # Pied de page
     st.markdown(

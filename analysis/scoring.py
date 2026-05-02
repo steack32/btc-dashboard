@@ -33,7 +33,7 @@ class IndicatorScore:
 
 
 def _piecewise(value: float, breakpoints: list[tuple[float, float]]) -> float:
-    """Interpolation linéaire entre paliers (value_seuil, score)."""
+    """Interpolation linéaire entre paliers (value_seuil, score). Scalaire."""
     if np.isnan(value):
         return 50.0
     bps = sorted(breakpoints)
@@ -46,6 +46,21 @@ def _piecewise(value: float, breakpoints: list[tuple[float, float]]) -> float:
             t = (value - x1) / (x2 - x1) if x2 != x1 else 0
             return y1 + t * (y2 - y1)
     return 50.0
+
+
+def _piecewise_vec(values, breakpoints: list[tuple[float, float]]):
+    """Version vectorisée du piecewise — applique sur une série numpy/pandas.
+
+    Utilisée par le backtest pour calculer un sous-score sur tout l'historique
+    en une passe. np.interp fait l'interpolation linéaire et clamp aux bornes.
+    """
+    bps = sorted(breakpoints)
+    xs = np.array([b[0] for b in bps])
+    ys = np.array([b[1] for b in bps])
+    arr = np.asarray(values, dtype=float)
+    result = np.interp(arr, xs, ys)
+    result = np.where(np.isnan(arr), 50.0, result)
+    return result
 
 
 def _interp_band(score: float) -> str:
@@ -61,28 +76,39 @@ def _interp_band(score: float) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Sous-scores par indicateur
+# Breakpoints (valeur_indicateur, sous_score 0-100) — partagés entre score
+# scalaire (live) et score vectorisé (backtest) pour rester cohérents.
+# ---------------------------------------------------------------------------
+
+BP_MVRV_Z = [(-1, 5), (0, 20), (1, 40), (2.5, 55), (4, 70), (5.5, 82), (7, 95), (10, 100)]
+BP_PUELL = [(0.3, 5), (0.5, 18), (0.8, 38), (1.2, 55), (2.0, 72), (3.0, 88), (4.5, 100)]
+BP_MAYER = [(0.6, 5), (0.85, 25), (1.0, 45), (1.4, 60), (1.9, 75), (2.4, 88), (3.0, 100)]
+BP_RSI_WEEKLY = [(20, 5), (30, 18), (40, 35), (50, 50), (60, 65), (70, 82), (80, 95), (90, 100)]
+BP_BTC_GOLD = [(0.6, 15), (0.8, 32), (0.95, 45), (1.05, 55), (1.3, 72), (1.7, 88), (2.5, 100)]
+BP_DXY_INV = [(-8, 10), (-4, 30), (-1, 45), (1, 55), (4, 70), (8, 90)]
+
+
+# ---------------------------------------------------------------------------
+# Sous-scores par indicateur (live, scalaire)
 # ---------------------------------------------------------------------------
 
 def score_mvrv_z(z: float) -> IndicatorScore:
-    # Seuils historiques : <0 capitulation, ~3-4 zone tendue, >7 top
-    s = _piecewise(z, [(-1, 5), (0, 20), (1, 40), (2.5, 55), (4, 70), (5.5, 82), (7, 95), (10, 100)])
+    s = _piecewise(z, BP_MVRV_Z)
     return IndicatorScore("mvrv_z", "MVRV Z-Score", z, s, WEIGHTS["mvrv_z"], _interp_band(s))
 
 
 def score_puell(p: float) -> IndicatorScore:
-    s = _piecewise(p, [(0.3, 5), (0.5, 18), (0.8, 38), (1.2, 55), (2.0, 72), (3.0, 88), (4.5, 100)])
+    s = _piecewise(p, BP_PUELL)
     return IndicatorScore("puell", "Puell Multiple", p, s, WEIGHTS["puell"], _interp_band(s))
 
 
 def score_mayer(m: float) -> IndicatorScore:
-    # < 1 sous-évalué, 1-2.4 zone normale, > 2.4 surchauffe historique
-    s = _piecewise(m, [(0.6, 5), (0.85, 25), (1.0, 45), (1.4, 60), (1.9, 75), (2.4, 88), (3.0, 100)])
+    s = _piecewise(m, BP_MAYER)
     return IndicatorScore("mayer", "Mayer Multiple", m, s, WEIGHTS["mayer"], _interp_band(s))
 
 
 def score_rsi_weekly(r: float) -> IndicatorScore:
-    s = _piecewise(r, [(20, 5), (30, 18), (40, 35), (50, 50), (60, 65), (70, 82), (80, 95), (90, 100)])
+    s = _piecewise(r, BP_RSI_WEEKLY)
     return IndicatorScore("rsi_weekly", "RSI hebdomadaire", r, s, WEIGHTS["rsi_weekly"], _interp_band(s))
 
 
@@ -90,15 +116,15 @@ def score_btc_gold(ratio: float, ratio_ma200: float) -> IndicatorScore:
     if ratio_ma200 is None or np.isnan(ratio_ma200) or ratio_ma200 == 0:
         return IndicatorScore("btc_gold", "Ratio BTC/Or", ratio, 50, WEIGHTS["btc_gold"], "Neutre")
     rel = ratio / ratio_ma200
-    s = _piecewise(rel, [(0.6, 15), (0.8, 32), (0.95, 45), (1.05, 55), (1.3, 72), (1.7, 88), (2.5, 100)])
+    s = _piecewise(rel, BP_BTC_GOLD)
     return IndicatorScore("btc_gold", "Ratio BTC/Or", ratio, s, WEIGHTS["btc_gold"], _interp_band(s),
                           note=f"BTC vaut {ratio:.0f} onces d'or")
 
 
 def score_dxy(trend_pct: float) -> IndicatorScore:
     """DXY corrélé inversement à BTC : DXY qui baisse = score haussier."""
-    inv = -trend_pct  # on inverse le signe
-    s = _piecewise(inv, [(-8, 10), (-4, 30), (-1, 45), (1, 55), (4, 70), (8, 90)])
+    inv = -trend_pct
+    s = _piecewise(inv, BP_DXY_INV)
     return IndicatorScore("dxy", "Tendance DXY", trend_pct, s, WEIGHTS["dxy"], _interp_band(s),
                           note=f"DXY {trend_pct:+.1f}% sur 50 jours")
 

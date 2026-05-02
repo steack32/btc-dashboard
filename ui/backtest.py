@@ -1,0 +1,192 @@
+"""Affichage de la section Backtest."""
+from __future__ import annotations
+
+import pandas as pd
+import streamlit as st
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+
+from analysis.backtest import KEY_DATES, extract_key_dates
+from config import PALETTE
+from ui.charts import CHART_CONFIG
+
+
+def _backtest_chart(history: pd.DataFrame) -> go.Figure:
+    """Prix BTC (échelle log, gauche) + score 0-100 (droite) sur le même graph.
+
+    Bandes de fond colorées pour les zones Accumuler / Ne rien faire / Vendre.
+    Marqueurs aux dates clés (tops/bottoms historiques).
+    """
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+    # Bandes des paliers en arrière-plan (sur l'axe score)
+    fig.add_hrect(
+        y0=0, y1=40,
+        fillcolor="rgba(47,191,113,0.07)", line_width=0, layer="below",
+        secondary_y=True,
+    )
+    fig.add_hrect(
+        y0=40, y1=75,
+        fillcolor="rgba(212,160,68,0.05)", line_width=0, layer="below",
+        secondary_y=True,
+    )
+    fig.add_hrect(
+        y0=75, y1=100,
+        fillcolor="rgba(209,69,69,0.07)", line_width=0, layer="below",
+        secondary_y=True,
+    )
+
+    # Prix BTC (axe gauche, log)
+    fig.add_trace(
+        go.Scatter(
+            x=history.index,
+            y=history["btc_price"],
+            name="Prix BTC",
+            mode="lines",
+            line=dict(color=PALETTE["accent"], width=1.6),
+            hovertemplate="<b>BTC</b> $%{y:,.0f}<extra></extra>",
+        ),
+        secondary_y=False,
+    )
+
+    # Score (axe droit, 0-100)
+    fig.add_trace(
+        go.Scatter(
+            x=history.index,
+            y=history["score"],
+            name="Score système",
+            mode="lines",
+            line=dict(color=PALETTE["info"], width=1.4),
+            hovertemplate="<b>Score</b> %{y:.0f}/100<extra></extra>",
+        ),
+        secondary_y=True,
+    )
+
+    # Lignes horizontales aux seuils 40 et 75 sur l'axe score
+    fig.add_hline(
+        y=40, line=dict(color=PALETTE["success"], dash="dash", width=1),
+        annotation_text="Seuil Accumuler", annotation_position="bottom right",
+        annotation_font=dict(size=10, color=PALETTE["success"]),
+        secondary_y=True,
+    )
+    fig.add_hline(
+        y=75, line=dict(color=PALETTE["danger"], dash="dash", width=1),
+        annotation_text="Seuil Vendre", annotation_position="top right",
+        annotation_font=dict(size=10, color=PALETTE["danger"]),
+        secondary_y=True,
+    )
+
+    # Marqueurs aux dates clés sur la courbe du prix
+    for kd in KEY_DATES:
+        d = kd["date"]
+        if d < history.index.min() or d > history.index.max():
+            continue
+        # On va chercher le prix à cette date (ou la plus proche dans la fenêtre)
+        nearest_idx = history.index.get_indexer([d], method="nearest")[0]
+        price_at = history["btc_price"].iloc[nearest_idx]
+        marker_color = PALETTE["danger"] if kd["kind"] == "top" else PALETTE["success"]
+        fig.add_trace(
+            go.Scatter(
+                x=[history.index[nearest_idx]],
+                y=[price_at],
+                mode="markers",
+                marker=dict(symbol="circle", size=9, color=marker_color,
+                            line=dict(color="#FFFFFF", width=1)),
+                name=kd["label"],
+                showlegend=False,
+                hovertemplate=f"<b>{kd['label']}</b><br>Prix : $%{{y:,.0f}}<extra></extra>",
+            ),
+            secondary_y=False,
+        )
+
+    # Layout
+    fig.update_layout(
+        height=520,
+        margin=dict(l=10, r=10, t=40, b=10),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color=PALETTE["text"], family="Inter, system-ui, sans-serif"),
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.02, x=0.5, xanchor="center",
+            bgcolor="rgba(0,0,0,0)", font=dict(size=11),
+        ),
+        hovermode="x unified",
+        hoverlabel=dict(
+            bgcolor=PALETTE["surface"], bordercolor=PALETTE["border_strong"],
+            font=dict(color=PALETTE["text"], size=12),
+        ),
+        dragmode="pan",
+        uirevision="backtest",
+    )
+
+    fig.update_xaxes(
+        gridcolor=PALETTE["border"], zeroline=False,
+        showspikes=True, spikemode="across", spikethickness=1,
+        spikecolor=PALETTE["accent"], spikedash="solid", spikesnap="cursor",
+        showline=True, linecolor=PALETTE["border_strong"],
+        rangeslider=dict(visible=True, thickness=0.04, bgcolor=PALETTE["bg"]),
+        rangeselector=dict(
+            buttons=[
+                dict(count=1, label="1A", step="year", stepmode="backward"),
+                dict(count=3, label="3A", step="year", stepmode="backward"),
+                dict(count=5, label="5A", step="year", stepmode="backward"),
+                dict(step="all", label="Tout"),
+            ],
+            bgcolor=PALETTE["surface"], activecolor=PALETTE["accent"],
+            font=dict(color=PALETTE["text"], size=11),
+            x=0, y=1.10,
+        ),
+    )
+
+    fig.update_yaxes(
+        title_text="Prix BTC (USD, log)",
+        type="log",
+        gridcolor=PALETTE["border"], zeroline=False,
+        title_font=dict(size=11, color=PALETTE["text_muted"]),
+        secondary_y=False,
+    )
+    fig.update_yaxes(
+        title_text="Score (0-100)",
+        range=[0, 100],
+        gridcolor="rgba(0,0,0,0)", zeroline=False,
+        title_font=dict(size=11, color=PALETTE["text_muted"]),
+        secondary_y=True,
+    )
+
+    return fig
+
+
+def render_backtest(history: pd.DataFrame) -> None:
+    if history.empty:
+        st.info("Pas assez de données pour afficher le backtest.")
+        return
+
+    st.subheader("Backtest historique")
+    st.caption(
+        "Simulation du score sur l'historique réel depuis mai 2018. "
+        "Le système est-il bien calibré ? Passe en revue les tops et bottoms majeurs."
+    )
+
+    st.plotly_chart(_backtest_chart(history), use_container_width=True, config=CHART_CONFIG)
+
+    # Stats globales
+    valid = history.dropna(subset=["score"])
+    if not valid.empty:
+        pct_accumuler = (valid["palier"] == "Accumuler").mean() * 100
+        pct_neutre = (valid["palier"] == "Ne rien faire").mean() * 100
+        pct_vendre = (valid["palier"] == "Vendre").mean() * 100
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Temps en Accumuler", f"{pct_accumuler:.1f}%")
+        c2.metric("Temps en Ne rien faire", f"{pct_neutre:.1f}%")
+        c3.metric("Temps en Vendre", f"{pct_vendre:.1f}%")
+
+    # Tableau dates clés
+    st.markdown("**Lecture du système aux retournements majeurs**")
+    st.caption(
+        "Pour chaque sommet ou creux historique, on regarde ce que le système aurait dit ce jour-là. "
+        "Un signal réussi : score en zone d'accumulation (≤ 40) au creux, en zone de vente (≥ 75) au sommet."
+    )
+    table = extract_key_dates(history)
+    if not table.empty:
+        st.dataframe(table, use_container_width=True, hide_index=True)
