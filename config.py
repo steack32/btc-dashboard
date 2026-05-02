@@ -99,5 +99,7 @@ YF_TICKERS: dict[str, str] = {
     "dxy": "DX-Y.NYB",
 }
 
-# Période d'historique souhaitée pour les données prix (années)
-HISTORY_YEARS = 11
+# Période d'historique souhaitée pour les données prix (années).
+# 12 ans permettent à la stratégie MA200W d'avoir 200 semaines d'historique
+# disponibles dès mai 2018 (date de démarrage des backtests).
+HISTORY_YEARS = 12

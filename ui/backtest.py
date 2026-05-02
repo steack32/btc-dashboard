@@ -390,3 +390,168 @@ def render_strategy_simulation(
         "Note : la simulation traite € ≈ $ pour simplifier (BTC est libellé en USD dans la source)."
     ).replace(",", " ")
     st.caption(caption)
+
+
+# ---------------------------------------------------------------------------
+# Stratégie MA200 hebdomadaire (trend-following binaire)
+# ---------------------------------------------------------------------------
+
+def _ma200w_chart(sim: pd.DataFrame, transitions: list[dict]) -> go.Figure:
+    fig = go.Figure()
+
+    # Prix BTC weekly
+    fig.add_trace(go.Scatter(
+        x=sim.index, y=sim["btc_price"],
+        name="BTC weekly close", mode="lines",
+        line=dict(color=PALETTE["accent"], width=1.6),
+        hovertemplate="<b>BTC</b> $%{y:,.0f}<extra></extra>",
+    ))
+    # MA200 weekly
+    fig.add_trace(go.Scatter(
+        x=sim.index, y=sim["ma200w"],
+        name="MA200 hebdo", mode="lines",
+        line=dict(color=PALETTE["info"], width=1.4, dash="dot"),
+        hovertemplate="<b>MA200W</b> $%{y:,.0f}<extra></extra>",
+    ))
+
+    # Zones grises sur les périodes où on est en cash (out of market)
+    out_periods = []
+    current_start = None
+    for d, in_m in zip(sim.index, sim["in_market"]):
+        if not in_m and current_start is None:
+            current_start = d
+        elif in_m and current_start is not None:
+            out_periods.append((current_start, d))
+            current_start = None
+    if current_start is not None:
+        out_periods.append((current_start, sim.index[-1]))
+
+    for start, end in out_periods:
+        fig.add_vrect(
+            x0=start, x1=end,
+            fillcolor="rgba(91, 127, 184, 0.10)",
+            line_width=0, layer="below",
+        )
+
+    # Marqueurs des transitions
+    for t in transitions:
+        if t["type"] == "init":
+            continue
+        marker_color = PALETTE["danger"] if t["type"] == "sell" else PALETTE["success"]
+        symbol = "triangle-down" if t["type"] == "sell" else "triangle-up"
+        label = "Vente totale" if t["type"] == "sell" else "Rachat"
+        fig.add_trace(go.Scatter(
+            x=[t["date"]], y=[t["price"]],
+            mode="markers",
+            marker=dict(symbol=symbol, size=12, color=marker_color,
+                        line=dict(color="#FFFFFF", width=1.2)),
+            name=label, showlegend=False,
+            hovertemplate=f"<b>{label}</b><br>$%{{y:,.0f}}<extra></extra>",
+        ))
+
+    fig.update_layout(
+        height=440,
+        margin=dict(l=10, r=10, t=40, b=10),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color=PALETTE["text"], family="Inter, system-ui, sans-serif"),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0.5, xanchor="center",
+                    bgcolor="rgba(0,0,0,0)", font=dict(size=11)),
+        hovermode="x unified",
+        hoverlabel=dict(bgcolor=PALETTE["surface"], bordercolor=PALETTE["border_strong"],
+                        font=dict(color=PALETTE["text"], size=12)),
+        dragmode="pan",
+        uirevision="ma200w_sim",
+    )
+    fig.update_xaxes(
+        gridcolor=PALETTE["border"], zeroline=False, showline=True,
+        linecolor=PALETTE["border_strong"],
+        rangeselector=dict(
+            buttons=[
+                dict(count=1, label="1A", step="year", stepmode="backward"),
+                dict(count=3, label="3A", step="year", stepmode="backward"),
+                dict(step="all", label="Tout"),
+            ],
+            bgcolor=PALETTE["surface"], activecolor=PALETTE["accent"],
+            font=dict(color=PALETTE["text"], size=11), x=0, y=1.10,
+        ),
+    )
+    fig.update_yaxes(
+        title_text="Prix BTC (USD, log)",
+        type="log",
+        gridcolor=PALETTE["border"], zeroline=False,
+        title_font=dict(size=11, color=PALETTE["text_muted"]),
+    )
+    return fig
+
+
+def render_ma200w_simulation(
+    btc_series: pd.Series,
+    capital_start: float = 10000.0,
+) -> None:
+    if btc_series is None or btc_series.empty:
+        return
+
+    sim = bt.simulate_ma200w_strategy(btc_series, capital_start=capital_start)
+    if sim.empty:
+        return
+
+    transitions = sim.attrs.get("transitions", [])
+    n_sells = sum(1 for t in transitions if t["type"] == "sell")
+    n_buys = sum(1 for t in transitions if t["type"] == "buy")
+    pct_in_market = sim["in_market"].mean() * 100
+
+    last = sim.iloc[-1]
+
+    # Buy & Hold de référence : capital_start investi au premier point valide
+    bh_history = pd.DataFrame({"btc_price": sim["btc_price"]})
+    bh = bt.simulate_buy_and_hold(bh_history, capital_start)
+    last_bh = bh.iloc[-1] if not bh.empty else None
+    bh_roi = float(last_bh["roi_pct"]) if last_bh is not None else float("nan")
+
+    st.subheader("Stratégie MA200 hebdomadaire")
+    st.caption(
+        f"Règle : on investit **{capital_start:,.0f} €** en BTC au départ. "
+        "Tant que la clôture hebdo est au-dessus de la MA200 hebdo, on garde. "
+        "Dès qu'elle clôture en-dessous, on liquide tout en cash. On rebascule "
+        "100 % BTC dès qu'on repasse au-dessus. Position toujours binaire."
+    .replace(",", " "))
+
+    # KPIs
+    c1, c2, c3, c4 = st.columns(4)
+    _kpi_card(c1, "Capital final",
+              f"{last['portfolio_value']:,.0f} €".replace(",", " "),
+              f"sur {capital_start:,.0f} € investis".replace(",", " "))
+    _kpi_card(c2, "Position actuelle",
+              "100 % BTC" if last["in_market"] else "100 % cash",
+              f"depuis {transitions[-1]['date'].strftime('%d %b %Y')}" if transitions else "")
+    _kpi_card(c3, "Transitions",
+              f"{n_sells} sorties · {n_buys} retours",
+              f"{(n_sells + n_buys)} opérations totales")
+    _kpi_card(c4, "Temps en marché",
+              f"{pct_in_market:.0f} %",
+              f"{(100 - pct_in_market):.0f} % en cash")
+
+    # Comparaison ROI
+    st.markdown("<div style='height:0.4rem;'></div>", unsafe_allow_html=True)
+    d1, d2 = st.columns(2)
+    strat_roi = float(last["roi_pct"])
+    _kpi_card(
+        d1, "ROI Stratégie MA200W",
+        f"{strat_roi:+.1f} %",
+        f"PnL : {(last['portfolio_value'] - capital_start):+,.0f} €".replace(",", " "),
+        PALETTE["success"] if strat_roi >= 0 else PALETTE["danger"],
+    )
+    _kpi_card(
+        d2, "ROI Buy & Hold",
+        f"{bh_roi:+.1f} %" if not pd.isna(bh_roi) else "—",
+        f"écart : {strat_roi - bh_roi:+.1f} pts" if not pd.isna(bh_roi) else "",
+        PALETTE["success"] if strat_roi >= bh_roi else PALETTE["danger"],
+    )
+
+    st.plotly_chart(_ma200w_chart(sim, transitions), use_container_width=True, config=CHART_CONFIG)
+
+    st.caption(
+        "Triangles verts ↑ : retour sur le marché · triangles rouges ↓ : sortie · "
+        "zones bleutées : périodes où on est resté en cash."
+    )

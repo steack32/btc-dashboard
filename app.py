@@ -12,7 +12,7 @@ from analysis import indicators as ind
 from analysis import scoring as sc
 from config import PALETTE
 from data import sources as ds
-from ui.backtest import render_backtest, render_strategy_simulation
+from ui.backtest import render_backtest, render_ma200w_simulation, render_strategy_simulation
 from ui.header import render_header, render_meta_bar
 from ui.sections import (
     render_technique,
@@ -255,6 +255,7 @@ def main() -> None:
         "<a href='#recap'>Récap</a>"
         "<a href='#backtest'>Backtest</a>"
         "<a href='#strategie'>Stratégie</a>"
+        "<a href='#ma200w'>MA200W</a>"
         "</nav>",
         unsafe_allow_html=True,
     )
@@ -294,6 +295,13 @@ def main() -> None:
             buy_pct_mid=0.005,
             sell_pct_high=0.005,
         )
+
+    st.markdown("<div id='ma200w' class='section-anchor'></div>", unsafe_allow_html=True)
+    with st.container(border=True):
+        # Passe la série BTC complète depuis 2014 pour pouvoir calculer la
+        # MA200 weekly avant 2018 (sinon il faut attendre 2022).
+        btc_full = data["btc"]["value"] if not data["btc"].empty else pd.Series(dtype=float)
+        render_ma200w_simulation(btc_full, capital_start=10000.0)
 
     # Pied de page minimaliste — le timestamp et les sources sont déjà
     # dans le bandeau meta en haut, on ne les répète pas ici.

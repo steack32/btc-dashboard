@@ -295,6 +295,88 @@ def simulate_dca(history: pd.DataFrame, daily_amount: float = 10.0) -> pd.DataFr
     return pd.DataFrame(rows).set_index("date")
 
 
+def simulate_ma200w_strategy(
+    btc_series: pd.Series,
+    capital_start: float = 10000.0,
+    start_date: pd.Timestamp = BACKTEST_START,
+) -> pd.DataFrame:
+    """Stratégie trend-following sur la MA200 weekly.
+
+    Règles :
+      - Au départ : on investit la totalité du capital en BTC
+      - Décision prise à chaque clôture hebdomadaire (W-SUN) :
+        * Clôture > MA200w  -> on est exposé 100 % BTC
+        * Clôture < MA200w  -> on liquide tout en cash, on attend
+      - On rebascule 100 % BTC dès qu'on repasse au-dessus
+
+    Position toujours binaire : 100 % BTC ou 100 % cash, jamais d'entre-deux.
+
+    On reçoit la série btc COMPLÈTE (depuis 2014) pour pouvoir calculer
+    la MA200w avant le start_date (mai 2018) — sinon il faudrait attendre
+    février 2022 pour avoir 200 semaines d'historique.
+    """
+    if btc_series is None or btc_series.empty:
+        return pd.DataFrame()
+
+    btc = btc_series.dropna().sort_index()
+
+    # Resample en clôtures hebdo (dimanche soir) sur l'historique complet
+    weekly = btc.resample("W-SUN").last().dropna()
+    ma200w = weekly.rolling(200).mean()
+
+    # On garde uniquement les semaines où MA200w est dispo ET >= start_date
+    valid_idx = ma200w.dropna().index
+    valid_idx = valid_idx[valid_idx >= start_date]
+    if len(valid_idx) == 0:
+        return pd.DataFrame()
+
+    first = valid_idx[0]
+    initial_price = float(weekly.loc[first])
+
+    btc_position = capital_start / initial_price
+    cash = 0.0
+    in_market = True
+
+    transitions: list[dict] = [
+        {"date": first, "type": "init", "price": initial_price}
+    ]
+
+    rows = []
+    for date in valid_idx:
+        weekly_close = float(weekly.loc[date])
+        ma_value = float(ma200w.loc[date])
+        should_be_in = weekly_close > ma_value
+
+        if should_be_in and not in_market:
+            btc_position = cash / weekly_close
+            cash = 0.0
+            in_market = True
+            transitions.append({"date": date, "type": "buy", "price": weekly_close})
+        elif (not should_be_in) and in_market:
+            cash = btc_position * weekly_close
+            btc_position = 0.0
+            in_market = False
+            transitions.append({"date": date, "type": "sell", "price": weekly_close})
+
+        portfolio = btc_position * weekly_close + cash
+
+        rows.append({
+            "date": date,
+            "btc_price": weekly_close,
+            "ma200w": ma_value,
+            "in_market": in_market,
+            "btc_position": btc_position,
+            "cash": cash,
+            "portfolio_value": portfolio,
+            "roi_pct": (portfolio - capital_start) / capital_start * 100,
+        })
+
+    df = pd.DataFrame(rows).set_index("date")
+    df.attrs["transitions"] = transitions
+    df.attrs["capital_start"] = capital_start
+    return df
+
+
 def simulate_buy_and_hold(history: pd.DataFrame, total_amount: float) -> pd.DataFrame:
     """Buy & Hold : on investit total_amount au jour 1, on garde."""
     valid = history.dropna(subset=["btc_price"])
