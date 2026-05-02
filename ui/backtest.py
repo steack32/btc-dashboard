@@ -1,6 +1,7 @@
 """Affichage de la section Backtest."""
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 from plotly.subplots import make_subplots
@@ -138,9 +139,19 @@ def _backtest_chart(history: pd.DataFrame) -> go.Figure:
         ),
     )
 
+    # Range explicite pour éviter l'autorange foireux en mode log + secondary_y.
+    # On calcule les bornes à partir des données réelles, avec une marge.
+    if not history["btc_price"].dropna().empty:
+        prices = history["btc_price"].dropna()
+        log_min = max(1, np.floor(np.log10(prices.min()) * 10) / 10 - 0.1)
+        log_max = np.ceil(np.log10(prices.max()) * 10) / 10 + 0.1
+    else:
+        log_min, log_max = 3, 5.5
+
     fig.update_yaxes(
         title_text="Prix BTC (USD, log)",
         type="log",
+        range=[log_min, log_max],
         gridcolor=PALETTE["border"], zeroline=False,
         title_font=dict(size=11, color=PALETTE["text_muted"]),
         secondary_y=False,
