@@ -24,6 +24,25 @@ def apply_theme() -> None:
 
         .stApp {{
             background: {PALETTE['bg']};
+            position: relative;
+        }}
+
+        /* Bandeau orange Bitcoin en haut, signature visuelle discrète */
+        .stApp::before {{
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(
+                90deg,
+                {PALETTE['accent']} 0%,
+                {PALETTE['accent']} 35%,
+                transparent 100%
+            );
+            z-index: 9999;
+            pointer-events: none;
         }}
 
         /* On masque le chrome Streamlit (menu, footer, deploy badge) */
@@ -141,6 +160,21 @@ def apply_theme() -> None:
             letter-spacing: -0.03em;
             line-height: 1.1;
             margin: 0.4rem 0 1rem 0;
+        }}
+
+        /* Logo Bitcoin dans le titre */
+        .btc-logo {{
+            color: {PALETTE['accent']};
+            font-weight: 700;
+            font-size: 1.05em;
+            display: inline-block;
+            transform: translateY(-0.02em);
+            margin-right: 0.15em;
+        }}
+
+        /* Bordure haute orange sur le bandeau cycle */
+        .cycle-bar {{
+            border-left: 2px solid {PALETTE['accent']} !important;
         }}
 
         .verdict-text {{

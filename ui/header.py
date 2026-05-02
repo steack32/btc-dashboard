@@ -57,12 +57,13 @@ def render_header(
     """
     color = VERDICT_COLORS.get(palier, PALETTE["text_muted"])
 
-    # Titre
+    # Titre — ₿ en orange Bitcoin officiel comme signature visuelle
     st.markdown(
         f"""
         <div style='margin-bottom:1.5rem;'>
             <h1 style='margin:0; font-weight:700; letter-spacing:-0.025em;'>
-                Bitcoin <span style='color:{PALETTE['text_muted']}; font-weight:500;'>·</span>
+                <span class='btc-logo'>₿</span>Bitcoin
+                <span style='color:{PALETTE['text_muted']}; font-weight:500; margin:0 0.4rem;'>·</span>
                 <span style='color:{PALETTE['text_muted']}; font-weight:500;'>Lecture moyen-long terme</span>
             </h1>
             <p style='color:{PALETTE['text_muted']}; font-size:0.95rem; margin:0.3rem 0 0 0;'>

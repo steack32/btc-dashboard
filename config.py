@@ -62,14 +62,15 @@ PALETTE: dict[str, str] = {
     "text_muted": "#9499A0",    # texte secondaire
     "text_dim": "#5C6068",      # texte tertiaire
     # Accents
-    "accent": "#F2A900",        # or Bitcoin officiel (sobre)
+    "accent": "#F7931A",        # orange Bitcoin officiel (le vrai, du logo)
+    "accent_soft": "#FFAA3D",   # variante plus claire pour hover/focus
     "info": "#5B9CFA",          # bleu fintech
     "success": "#2FBF71",       # vert sage
     "warning": "#D4A044",       # or désaturé
     "danger": "#D14545",        # rouge brique
     "cold": "#5B7FB8",          # bleu acier (capitulation)
     # Couleurs de courbes
-    "series_main": "#F2A900",
+    "series_main": "#F7931A",
     "series_alt": "#5B9CFA",
     "series_neutral": "#8B92A0",
     "series_warm": "#D14545",
