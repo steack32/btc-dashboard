@@ -192,6 +192,134 @@ def compute_historical_scores(data: dict, start: pd.Timestamp = BACKTEST_START) 
     return df
 
 
+def simulate_strategy(
+    history: pd.DataFrame,
+    buy_amount: float = 10.0,
+    sell_amount: float = 50.0,
+) -> pd.DataFrame:
+    """Simule la stratégie d'achat/vente basée sur le palier du score.
+
+    Règles :
+      - Palier "Accumuler" : on achète buy_amount par jour
+      - Palier "Vendre"    : on vend sell_amount par jour (ou tout ce qu'il reste si moins)
+      - Palier "Ne rien faire" : rien
+
+    Tous les montants sont dans la même unité que le prix BTC du dataset
+    (USD). À l'affichage on les présentera en € (parité 1:1 acceptée
+    comme approximation, l'EUR/USD oscille entre 0.95 et 1.20 sur la période).
+
+    Retourne un DataFrame indexé par date avec :
+      - btc_price, palier
+      - btc_position : BTC cumulés détenus
+      - cash_realized : cumul des ventes encaissées
+      - total_invested : cumul brut des achats
+      - portfolio_value = btc_position * prix + cash_realized
+      - pnl = portfolio_value - total_invested
+      - roi_pct = pnl / total_invested * 100
+      - buy_event, sell_event : montants de l'achat/vente du jour
+    """
+    btc_position = 0.0
+    cash_realized = 0.0
+    total_invested = 0.0
+
+    rows = []
+    for date, row in history.iterrows():
+        price = row["btc_price"]
+        palier = row["palier"]
+        buy_eur = 0.0
+        sell_eur = 0.0
+
+        if pd.notna(price) and pd.notna(palier):
+            if palier == "Accumuler":
+                btc_position += buy_amount / price
+                total_invested += buy_amount
+                buy_eur = buy_amount
+            elif palier == "Vendre":
+                btc_to_sell = sell_amount / price
+                if btc_position >= btc_to_sell:
+                    btc_position -= btc_to_sell
+                    sell_eur = sell_amount
+                elif btc_position > 0:
+                    sell_eur = btc_position * price
+                    btc_position = 0.0
+                cash_realized += sell_eur
+
+        portfolio = (btc_position * price if pd.notna(price) else 0.0) + cash_realized
+        pnl = portfolio - total_invested
+
+        rows.append({
+            "date": date,
+            "btc_price": price,
+            "palier": palier,
+            "btc_position": btc_position,
+            "cash_realized": cash_realized,
+            "total_invested": total_invested,
+            "portfolio_value": portfolio,
+            "pnl": pnl,
+            "roi_pct": (pnl / total_invested * 100) if total_invested > 0 else 0.0,
+            "buy_event": buy_eur,
+            "sell_event": sell_eur,
+        })
+
+    return pd.DataFrame(rows).set_index("date")
+
+
+def simulate_dca(history: pd.DataFrame, daily_amount: float = 10.0) -> pd.DataFrame:
+    """DCA simple : achète daily_amount chaque jour, sans tenir compte du score.
+
+    Sert de baseline pour mesurer l'apport de la stratégie scorée.
+    """
+    btc_position = 0.0
+    total_invested = 0.0
+
+    rows = []
+    for date, row in history.iterrows():
+        price = row["btc_price"]
+        if pd.notna(price):
+            btc_position += daily_amount / price
+            total_invested += daily_amount
+
+        portfolio = btc_position * price if pd.notna(price) else 0.0
+        pnl = portfolio - total_invested
+
+        rows.append({
+            "date": date,
+            "btc_price": price,
+            "btc_position": btc_position,
+            "total_invested": total_invested,
+            "portfolio_value": portfolio,
+            "pnl": pnl,
+            "roi_pct": (pnl / total_invested * 100) if total_invested > 0 else 0.0,
+        })
+
+    return pd.DataFrame(rows).set_index("date")
+
+
+def simulate_buy_and_hold(history: pd.DataFrame, total_amount: float) -> pd.DataFrame:
+    """Buy & Hold : on investit total_amount au jour 1, on garde."""
+    valid = history.dropna(subset=["btc_price"])
+    if valid.empty:
+        return pd.DataFrame()
+    first_price = valid["btc_price"].iloc[0]
+    btc_position = total_amount / first_price
+
+    rows = []
+    for date, row in history.iterrows():
+        price = row["btc_price"]
+        portfolio = btc_position * price if pd.notna(price) else 0.0
+        pnl = portfolio - total_amount
+        rows.append({
+            "date": date,
+            "btc_price": price,
+            "btc_position": btc_position,
+            "total_invested": total_amount,
+            "portfolio_value": portfolio,
+            "pnl": pnl,
+            "roi_pct": (pnl / total_amount * 100) if total_amount > 0 else 0.0,
+        })
+    return pd.DataFrame(rows).set_index("date")
+
+
 def extract_key_dates(history: pd.DataFrame) -> pd.DataFrame:
     """Pour chaque date clé, récupère le score et le prix BTC à ±3 jours près.
 

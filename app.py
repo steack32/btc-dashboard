@@ -14,7 +14,7 @@ from analysis import indicators as ind
 from analysis import scoring as sc
 from config import PALETTE
 from data import sources as ds
-from ui.backtest import render_backtest
+from ui.backtest import render_backtest, render_strategy_simulation
 from ui.header import render_header
 from ui.sections import (
     render_technique,
@@ -254,6 +254,7 @@ def main() -> None:
     # Le cache de load_all_data() évite déjà les appels API en double.
     history = bt.compute_historical_scores(data)
     render_backtest(history)
+    render_strategy_simulation(history, buy_amount=10.0, sell_amount=50.0)
 
     # Pied de page
     st.markdown(
