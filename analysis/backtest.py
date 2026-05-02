@@ -194,29 +194,21 @@ def compute_historical_scores(data: dict, start: pd.Timestamp = BACKTEST_START) 
 
 def simulate_strategy(
     history: pd.DataFrame,
-    buy_amount: float = 10.0,
-    sell_amount: float = 50.0,
+    buy_low: float = 10.0,    # achat quotidien en zone Accumuler
+    buy_mid: float = 5.0,     # achat quotidien en zone Ne rien faire
+    sell_high: float = 20.0,  # vente quotidienne en zone Vendre
 ) -> pd.DataFrame:
-    """Simule la stratégie d'achat/vente basée sur le palier du score.
+    """Simule une stratégie à trois paliers basée sur le palier du score.
 
     Règles :
-      - Palier "Accumuler" : on achète buy_amount par jour
-      - Palier "Vendre"    : on vend sell_amount par jour (ou tout ce qu'il reste si moins)
-      - Palier "Ne rien faire" : rien
+      - Palier "Accumuler"    : on achète buy_low par jour
+      - Palier "Ne rien faire": on achète buy_mid par jour (DCA réduit)
+      - Palier "Vendre"       : on vend sell_high par jour
+        (ou tout ce qu'il reste en BTC si moins disponible)
 
     Tous les montants sont dans la même unité que le prix BTC du dataset
     (USD). À l'affichage on les présentera en € (parité 1:1 acceptée
     comme approximation, l'EUR/USD oscille entre 0.95 et 1.20 sur la période).
-
-    Retourne un DataFrame indexé par date avec :
-      - btc_price, palier
-      - btc_position : BTC cumulés détenus
-      - cash_realized : cumul des ventes encaissées
-      - total_invested : cumul brut des achats
-      - portfolio_value = btc_position * prix + cash_realized
-      - pnl = portfolio_value - total_invested
-      - roi_pct = pnl / total_invested * 100
-      - buy_event, sell_event : montants de l'achat/vente du jour
     """
     btc_position = 0.0
     cash_realized = 0.0
@@ -231,14 +223,19 @@ def simulate_strategy(
 
         if pd.notna(price) and pd.notna(palier):
             if palier == "Accumuler":
-                btc_position += buy_amount / price
-                total_invested += buy_amount
-                buy_eur = buy_amount
+                btc_position += buy_low / price
+                total_invested += buy_low
+                buy_eur = buy_low
+            elif palier == "Ne rien faire":
+                if buy_mid > 0:
+                    btc_position += buy_mid / price
+                    total_invested += buy_mid
+                    buy_eur = buy_mid
             elif palier == "Vendre":
-                btc_to_sell = sell_amount / price
+                btc_to_sell = sell_high / price
                 if btc_position >= btc_to_sell:
                     btc_position -= btc_to_sell
-                    sell_eur = sell_amount
+                    sell_eur = sell_high
                 elif btc_position > 0:
                     sell_eur = btc_position * price
                     btc_position = 0.0

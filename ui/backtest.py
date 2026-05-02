@@ -297,21 +297,26 @@ def _kpi_card(col, label: str, value: str, delta: str = "", color: str | None = 
 
 def render_strategy_simulation(
     history: pd.DataFrame,
-    buy_amount: float = 10.0,
-    sell_amount: float = 50.0,
+    buy_low: float = 10.0,
+    buy_mid: float = 5.0,
+    sell_high: float = 20.0,
 ) -> None:
     if history.empty:
         return
 
     st.subheader("Simulation de stratégie")
     st.caption(
-        f"Règle simulée : **+{buy_amount:.0f}€/jour** en zone Accumuler · "
-        f"**−{sell_amount:.0f}€/jour** en zone Vendre · rien sinon. "
-        "Comparaison avec un DCA classique de même montant et un Buy & Hold de capital équivalent."
+        f"Règle simulée : **+{buy_low:.0f}€/jour** en zone Accumuler · "
+        f"**+{buy_mid:.0f}€/jour** en zone Ne rien faire · "
+        f"**−{sell_high:.0f}€/jour** en zone Vendre. "
+        "Comparaison avec un DCA classique de même intensité moyenne et un Buy & Hold de capital équivalent."
     )
 
-    sim = bt.simulate_strategy(history, buy_amount, sell_amount)
-    dca = bt.simulate_dca(history, buy_amount)
+    sim = bt.simulate_strategy(history, buy_low=buy_low, buy_mid=buy_mid, sell_high=sell_high)
+    # Pour la baseline DCA, on prend la moyenne pondérée des deux montants d'achat
+    # comme "intensité moyenne" — c'est plus représentatif que le seul buy_low.
+    avg_buy = (buy_low + buy_mid) / 2
+    dca = bt.simulate_dca(history, avg_buy)
     bh = bt.simulate_buy_and_hold(history, dca["total_invested"].iloc[-1])
 
     last = sim.iloc[-1]

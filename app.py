@@ -254,7 +254,7 @@ def main() -> None:
     # Le cache de load_all_data() évite déjà les appels API en double.
     history = bt.compute_historical_scores(data)
     render_backtest(history)
-    render_strategy_simulation(history, buy_amount=10.0, sell_amount=50.0)
+    render_strategy_simulation(history, buy_low=10.0, buy_mid=5.0, sell_high=20.0)
 
     # Pied de page
     st.markdown(

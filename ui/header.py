@@ -62,7 +62,7 @@ def render_header(
     # HTML compact (sans indentations) pour éviter que Streamlit
     # interprète les indentations comme du code block markdown.
     title_html = (
-        f"<div style='margin-bottom:1.5rem;'>"
+        f"<div style='margin-bottom:1rem;'>"
         f"<h1 style='margin:0; font-weight:700; letter-spacing:-0.025em;'>"
         f"<span class='btc-logo'>₿</span>Bitcoin"
         f"<span style='color:{PALETTE['text_muted']}; font-weight:500; margin:0 0.4rem;'>·</span>"
@@ -75,7 +75,9 @@ def render_header(
     )
     st.markdown(title_html, unsafe_allow_html=True)
 
-    # Hero principal : compteur + verdict
+    # Hero principal : compteur + verdict.
+    # Le style "card" est appliqué via CSS sur le premier
+    # [data-testid="stHorizontalBlock"] dans le main container (voir theme.py).
     col_gauge, col_verdict = st.columns([1, 1.4], gap="large")
 
     with col_gauge:

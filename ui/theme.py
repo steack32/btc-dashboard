@@ -22,8 +22,74 @@ def apply_theme() -> None:
             color: {PALETTE['text']};
         }}
 
+        /* Fond profond avec radial gradients diffus + pattern de grille subtil.
+           Donne de la profondeur sans tomber dans le kitsch. */
         .stApp {{
-            background: {PALETTE['bg']};
+            background:
+                radial-gradient(ellipse 75% 38% at 0% 0%,
+                    rgba(247, 147, 26, 0.07) 0%, transparent 65%),
+                radial-gradient(ellipse 65% 45% at 100% 100%,
+                    rgba(91, 156, 250, 0.05) 0%, transparent 65%),
+                radial-gradient(ellipse 90% 60% at 50% 30%,
+                    rgba(247, 147, 26, 0.025) 0%, transparent 70%),
+                linear-gradient(180deg, #0E0F11 0%, #0B0C0E 100%);
+            background-attachment: fixed;
+        }}
+
+        /* Pattern de grille très subtil par-dessus */
+        .stApp::after {{
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+            z-index: 0;
+        }}
+
+        /* Le contenu doit passer au-dessus du pattern */
+        [data-testid="stAppViewContainer"] {{
+            position: relative;
+            z-index: 1;
+        }}
+
+        /* Hero card : on style le premier stHorizontalBlock du main container,
+           qui contient la jauge à gauche et le verdict à droite. */
+        [data-testid="stMainBlockContainer"]
+            > div:first-child
+            > [data-testid="stVerticalBlock"]
+            > [data-testid="stHorizontalBlock"]:first-of-type {{
+            background:
+                radial-gradient(ellipse 80% 100% at 0% 50%,
+                    rgba(247, 147, 26, 0.08) 0%, transparent 60%),
+                linear-gradient(135deg,
+                    {PALETTE['surface']} 0%,
+                    {PALETTE['surface_alt']} 100%);
+            border: 1px solid {PALETTE['border']};
+            border-radius: 16px;
+            padding: 1.4rem 1.8rem;
+            margin-bottom: 1.2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3),
+                        inset 0 1px 0 rgba(247, 147, 26, 0.08);
+            position: relative;
+            overflow: hidden;
+        }}
+
+        /* Trait lumineux en haut de la hero card */
+        [data-testid="stMainBlockContainer"]
+            > div:first-child
+            > [data-testid="stVerticalBlock"]
+            > [data-testid="stHorizontalBlock"]:first-of-type::before {{
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 35%;
+            height: 1px;
+            background: linear-gradient(90deg,
+                {PALETTE['accent']} 0%,
+                transparent 100%);
         }}
 
         /* Bandeau orange Bitcoin en haut (div injectée séparément, pas un pseudo-élément) */
@@ -276,31 +342,36 @@ def apply_theme() -> None:
             border-top: 1px solid {PALETTE['border']};
         }}
 
-        /* Scrollbar orange Bitcoin (Chromium/WebKit) */
+        /* Scrollbar orange Bitcoin — visible en permanence */
+        html {{
+            overflow-y: scroll !important;  /* force la scrollbar même si le contenu tient */
+        }}
         ::-webkit-scrollbar {{
-            width: 10px;
-            height: 10px;
+            width: 10px !important;
+            height: 10px !important;
         }}
         ::-webkit-scrollbar-track {{
-            background: {PALETTE['bg']};
-            border-left: 1px solid {PALETTE['border']};
+            background: {PALETTE['bg']} !important;
         }}
         ::-webkit-scrollbar-thumb {{
-            background: {PALETTE['accent']};
-            border-radius: 6px;
-            border: 2px solid {PALETTE['bg']};
+            background: {PALETTE['accent']} !important;
+            border-radius: 6px !important;
+            border: 2px solid {PALETTE['bg']} !important;
         }}
-        ::-webkit-scrollbar-thumb:hover {{
-            background: {PALETTE['accent_soft']};
+        ::-webkit-scrollbar-thumb:hover,
+        ::-webkit-scrollbar-thumb:active {{
+            background: {PALETTE['accent_soft']} !important;
         }}
         ::-webkit-scrollbar-corner {{
-            background: {PALETTE['bg']};
+            background: {PALETTE['bg']} !important;
         }}
 
-        /* Firefox */
+        /* Firefox — orange permanent */
+        html,
+        body,
         * {{
-            scrollbar-width: thin;
-            scrollbar-color: {PALETTE['accent']} {PALETTE['bg']};
+            scrollbar-width: thin !important;
+            scrollbar-color: {PALETTE['accent']} {PALETTE['bg']} !important;
         }}
     </style>
     <div id="btc-top-bar"></div>
