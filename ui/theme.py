@@ -57,9 +57,14 @@ def apply_theme() -> None:
 
         /* Padding du conteneur principal */
         [data-testid="stAppViewContainer"] > .main > div {{
-            padding-top: 1.5rem;
+            padding-top: 0.5rem;
             padding-bottom: 4rem;
             max-width: 1400px;
+        }}
+
+        /* Block container Streamlit : on rapproche le contenu du haut */
+        [data-testid="stMainBlockContainer"] {{
+            padding-top: 1.5rem !important;
         }}
 
         /* Titres */

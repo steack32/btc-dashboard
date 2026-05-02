@@ -242,14 +242,14 @@ def gauge(score: float, color: str) -> go.Figure:
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=score,
-        domain={"x": [0, 1], "y": [0.05, 1]},
+        domain={"x": [0.05, 0.95], "y": [0.0, 1.0]},
         number={
             "font": {
-                "size": 76,
+                "size": 52,
                 "color": PALETTE["text"],
                 "family": "Inter, sans-serif",
             },
-            "suffix": "<span style='font-size:0.42em; color:" + PALETTE["text_dim"] + ";'> / 100</span>",
+            "suffix": " / 100",
             "valueformat": ".0f",
         },
         gauge={
@@ -259,21 +259,20 @@ def gauge(score: float, color: str) -> go.Figure:
                 "tickwidth": 0,
                 "tickcolor": PALETTE["text_dim"],
                 "tickfont": {
-                    "size": 11,
+                    "size": 10,
                     "color": PALETTE["text_dim"],
                     "family": "Inter, sans-serif",
                 },
-                "tickvals": [0, 40, 75, 100],
-                "ticktext": ["0", "40", "75", "100"],
+                "tickvals": [0, 50, 100],
+                "ticktext": ["0", "50", "100"],
             },
             "bar": {"color": "rgba(0,0,0,0)", "thickness": 0},
             "bgcolor": "rgba(0,0,0,0)",
             "borderwidth": 0,
             "steps": [
-                # Bandes désaturées : on ne veut pas voler la vedette à l'aiguille
-                {"range": [0, 40], "color": "#1F3A2A"},   # vert très sombre — Accumuler
-                {"range": [40, 75], "color": "#3A331F"},  # or très sombre — Ne rien faire
-                {"range": [75, 100], "color": "#3A1F1F"}, # rouge très sombre — Vendre
+                {"range": [0, 40], "color": "#2A4D38"},   # vert sombre — Accumuler
+                {"range": [40, 75], "color": "#4D4128"},  # or sombre — Ne rien faire
+                {"range": [75, 100], "color": "#4D2828"}, # rouge sombre — Vendre
             ],
             "threshold": {
                 "line": {"color": color, "width": 5},
@@ -283,8 +282,8 @@ def gauge(score: float, color: str) -> go.Figure:
         },
     ))
     fig.update_layout(
-        height=290,
-        margin=dict(l=20, r=20, t=10, b=20),
+        height=230,
+        margin=dict(l=20, r=20, t=20, b=10),
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(color=PALETTE["text"], family="Inter, sans-serif"),
     )
