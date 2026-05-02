@@ -78,48 +78,6 @@ def score_rsi_weekly(r: float) -> IndicatorScore:
     return IndicatorScore("rsi_weekly", "RSI hebdomadaire", r, s, WEIGHTS["rsi_weekly"], _interp_band(s))
 
 
-def score_nupl(n: float) -> IndicatorScore:
-    s = _piecewise(n, [(-0.25, 5), (0, 22), (0.25, 42), (0.5, 60), (0.65, 78), (0.75, 92), (0.85, 100)])
-    return IndicatorScore("nupl", "NUPL", n, s, WEIGHTS["nupl"], _interp_band(s))
-
-
-def score_ma200w(price: float, ma: float) -> IndicatorScore:
-    """Position du prix par rapport à la MA 200 semaines."""
-    if ma is None or np.isnan(ma) or ma == 0:
-        return IndicatorScore("ma200w", "Prix vs MA 200 sem.", float("nan"), 50, WEIGHTS["ma200w"], "Neutre")
-    ratio = price / ma
-    s = _piecewise(ratio, [(0.7, 5), (0.9, 22), (1.0, 45), (1.5, 60), (2.5, 78), (4.0, 92), (6.0, 100)])
-    return IndicatorScore("ma200w", "Prix vs MA 200 sem.", ratio, s, WEIGHTS["ma200w"], _interp_band(s),
-                          note=f"Prix à {ratio:.2f}× la MA200W")
-
-
-def score_pi_cycle(triggered: bool, ma111: float, ma350x2: float) -> IndicatorScore:
-    """Pi Cycle : binaire. Déclenché = sommet probable, sinon neutre-bas."""
-    if triggered:
-        return IndicatorScore("pi_cycle", "Pi Cycle Top", 1, 95, WEIGHTS["pi_cycle"], "Surchauffe",
-                              note="MA111 a dépassé 2×MA350 — historiquement signal de top")
-    # Distance relative entre les deux MA — plus on s'en rapproche, plus on monte dans le score
-    if ma350x2 and not np.isnan(ma350x2) and ma350x2 != 0:
-        gap = ma111 / ma350x2
-        s = _piecewise(gap, [(0.4, 15), (0.6, 30), (0.8, 50), (0.95, 70), (1.0, 92)])
-    else:
-        s = 50
-    return IndicatorScore("pi_cycle", "Pi Cycle Top", 0, s, WEIGHTS["pi_cycle"], _interp_band(s))
-
-
-def score_hash_ribbons(spread_pct: float) -> IndicatorScore:
-    """Spread (MA30 - MA60)/MA60 en %. Négatif = capitulation mineurs.
-
-    Capitulation = score bas mais c'est historiquement une opportunité —
-    on garde la convention (bas = baissier) pour la cohérence du score
-    agrégé, l'interprétation textuelle nuance.
-    """
-    s = _piecewise(spread_pct, [(-10, 8), (-5, 22), (-1, 40), (1, 55), (5, 70), (15, 88), (30, 100)])
-    label = _interp_band(s)
-    note = "Capitulation mineurs (historiquement zone d'achat)" if spread_pct < 0 else "Mineurs en expansion"
-    return IndicatorScore("hash_ribbons", "Hash Ribbons", spread_pct, s, WEIGHTS["hash_ribbons"], label, note=note)
-
-
 def score_btc_gold(ratio: float, ratio_ma200: float) -> IndicatorScore:
     if ratio_ma200 is None or np.isnan(ratio_ma200) or ratio_ma200 == 0:
         return IndicatorScore("btc_gold", "Ratio BTC/Or", ratio, 50, WEIGHTS["btc_gold"], "Neutre")
@@ -141,16 +99,6 @@ def score_fear_greed(v: float) -> IndicatorScore:
     s = float(v)  # F&G est déjà sur 0-100, parfait
     label = _interp_band(s)
     return IndicatorScore("fear_greed", "Fear & Greed", v, s, WEIGHTS["fear_greed"], label)
-
-
-def score_realized_price(price: float, realized: float) -> IndicatorScore:
-    if realized is None or np.isnan(realized) or realized == 0:
-        return IndicatorScore("realized_price", "Prix vs Realized", float("nan"), 50,
-                              WEIGHTS["realized_price"], "Neutre")
-    rel = price / realized
-    s = _piecewise(rel, [(0.7, 5), (1.0, 30), (1.5, 50), (2.5, 70), (4.0, 88), (6.0, 100)])
-    return IndicatorScore("realized_price", "Prix vs Realized", rel, s, WEIGHTS["realized_price"],
-                          _interp_band(s), note=f"Prix à {rel:.2f}× le Realized Price")
 
 
 # ---------------------------------------------------------------------------
@@ -191,19 +139,15 @@ def generate_verdict(scores: list[IndicatorScore], aggregate_score: float, palie
     extrêmes_bas = sorted([s for s in valid if s.sub_score <= 25], key=lambda s: s.sub_score)[:3]
 
     intro = {
-        "Capitulation": "BTC est en zone de capitulation",
-        "Baissier": "BTC reste sous pression baissière",
-        "Neutre": "BTC est en territoire neutre",
-        "Haussier": "BTC est clairement haussier",
-        "Euphorie": "BTC est en zone d'euphorie",
+        "Accumuler": "BTC est dans une zone d'accumulation",
+        "Ne rien faire": "BTC est en territoire neutre à modérément haussier",
+        "Vendre": "BTC est en zone de surchauffe",
     }.get(palier, "Lecture mixte")
 
     conclu = {
-        "Capitulation": "Historiquement, ce type de configuration a marqué les plus belles opportunités d'accumulation. Achat échelonné raisonnable.",
-        "Baissier": "Pas de précipitation, mieux vaut accumuler par tranches que tout charger d'un coup.",
-        "Neutre": "Pas de signal fort — on attend une rupture franche dans un sens ou l'autre avant de bouger.",
-        "Haussier": "Le momentum est confirmé. On reste exposé, mais on commence à préparer mentalement les zones de prises de bénéfices partielles.",
-        "Euphorie": "Prudence. Historiquement, ce type de lecture a précédé les sommets de cycle de quelques semaines à quelques mois. Prises de bénéfices partielles à envisager sérieusement.",
+        "Accumuler": "Historiquement, ce type de configuration a marqué les meilleurs points d'entrée. Achat échelonné par tranches plutôt que tout charger d'un coup.",
+        "Ne rien faire": "Pas de signal fort dans un sens ou dans l'autre. Tu restes sur tes positions, ne touche à rien — sur du long terme, agir trop souvent coûte plus que ça ne rapporte.",
+        "Vendre": "Prudence. Historiquement, ce type de lecture a précédé les sommets de cycle de quelques semaines à quelques mois. C'est le moment d'envisager des prises de bénéfices partielles, pas de tout vendre d'un coup.",
     }.get(palier, "")
 
     drivers = ""

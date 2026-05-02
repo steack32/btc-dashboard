@@ -65,10 +65,6 @@ def _blockchain_chart(chart: str) -> pd.DataFrame:
     return df
 
 
-def fetch_hash_rate() -> pd.DataFrame:
-    return fetch_with_cache("hash_rate", lambda: _blockchain_chart("hash-rate"), TTL_HOURS["onchain"])
-
-
 def fetch_miner_revenue() -> pd.DataFrame:
     return fetch_with_cache(
         "miner_revenue", lambda: _blockchain_chart("miners-revenue"), TTL_HOURS["onchain"]
@@ -117,12 +113,6 @@ def _bitcoin_data(endpoint: str, value_field: str) -> pd.DataFrame:
 def fetch_mvrv_zscore() -> pd.DataFrame:
     return fetch_with_cache(
         "mvrv_zscore", lambda: _bitcoin_data("mvrv-zscore", "mvrvZscore"), TTL_HOURS["onchain"]
-    )
-
-
-def fetch_realized_price() -> pd.DataFrame:
-    return fetch_with_cache(
-        "realized_price", lambda: _bitcoin_data("realized-price", "realizedPrice"), TTL_HOURS["onchain"]
     )
 
 

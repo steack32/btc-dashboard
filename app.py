@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from datetime import datetime
 
-import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -40,13 +39,10 @@ def load_all_data() -> dict:
         "btc": ds.fetch_btc(),
         "gold": ds.fetch_gold(),
         "dxy": ds.fetch_dxy(),
-        "hash_rate": ds.fetch_hash_rate(),
         "miner_revenue": ds.fetch_miner_revenue(),
         "market_cap": ds.fetch_market_cap(),
-        "supply": ds.fetch_supply(),
         "mvrv_z": ds.fetch_mvrv_zscore(),
         "realized_cap": ds.fetch_realized_cap(),
-        "realized_price": ds.fetch_realized_price(),
         "fear_greed": ds.fetch_fear_greed(),
     }
 
@@ -84,16 +80,6 @@ def compute_scores(data: dict) -> tuple[list[sc.IndicatorScore], dict[str, sc.In
         mayer = ind.mayer_multiple(btc_price)
         scores.append(sc.score_mayer(_last_value_series(mayer)))
 
-        pi = ind.pi_cycle(btc_price)
-        last_pi = pi.dropna().iloc[-1] if not pi.dropna().empty else None
-        if last_pi is not None:
-            scores.append(sc.score_pi_cycle(
-                bool(last_pi["signal"]), float(last_pi["ma111"]), float(last_pi["ma350x2"])
-            ))
-
-        ma200_w = ind.ma200w(btc_price)
-        scores.append(sc.score_ma200w(last_price, _last_value_series(ma200_w)))
-
     # On-chain — MVRV Z (avec fallback local si l'API distante a renvoyé vide)
     mvrv = data.get("mvrv_z")
     if mvrv is not None and not mvrv.empty:
@@ -110,26 +96,6 @@ def compute_scores(data: dict) -> tuple[list[sc.IndicatorScore], dict[str, sc.In
     if mr is not None and not mr.empty:
         puell = ind.puell_multiple(mr["value"])
         scores.append(sc.score_puell(_last_value_series(puell)))
-
-    # NUPL
-    mc = data.get("market_cap")
-    rc = data.get("realized_cap")
-    if mc is not None and rc is not None and not mc.empty and not rc.empty:
-        n = ind.nupl(mc["value"], rc["value"])
-        scores.append(sc.score_nupl(_last_value_series(n)))
-
-    # Hash Ribbons
-    hr = data.get("hash_rate")
-    if hr is not None and not hr.empty:
-        hb = ind.hash_ribbons(hr["value"])
-        last_hb = hb.dropna().iloc[-1] if not hb.dropna().empty else None
-        if last_hb is not None:
-            scores.append(sc.score_hash_ribbons(float(last_hb["spread_pct"])))
-
-    # Realized Price
-    rp = data.get("realized_price")
-    if rp is not None and not rp.empty and not np.isnan(last_price):
-        scores.append(sc.score_realized_price(last_price, _last_value(rp)))
 
     # Macro — BTC/Gold
     gold = data.get("gold")

@@ -119,42 +119,6 @@ def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
                 height=280,
             ))
 
-        if "pi_cycle" in scores:
-            st.markdown("**Pi Cycle Top** — croisement MA111 / 2×MA350")
-            _badge(scores["pi_cycle"])
-            ma111 = btc.rolling(111).mean()
-            ma350x2 = btc.rolling(350).mean() * 2
-            _show(line_chart(
-                "MA111 vs 2×MA350",
-                traces=[
-                    {"name": "BTC", "series": btc, "color": "#FFB300", "width": 1.2},
-                    {"name": "MA111", "series": ma111, "color": "#4FC3F7"},
-                    {"name": "2×MA350", "series": ma350x2, "color": "#EF5350"},
-                ],
-                y_log=True,
-                y_format=",.0f",
-                y_title="Prix (USD)",
-                height=280,
-            ))
-            st.caption("Indicateur historique des sommets de cycle 2013/2017/2021. "
-                       "Pertinence post-ETF non garantie — à prendre avec recul.")
-
-    if "ma200w" in scores:
-        st.markdown("**Prix vs MA 200 semaines** — support structurel historique")
-        _badge(scores["ma200w"])
-        weekly = btc.resample("W-SUN").last()
-        ma_200w = weekly.rolling(200).mean()
-        _show(line_chart(
-            "BTC weekly vs MA200W",
-            traces=[
-                {"name": "BTC (W)", "series": weekly, "color": "#FFB300"},
-                {"name": "MA200W", "series": ma_200w, "color": "#EF5350"},
-            ],
-            y_log=True,
-            y_format=",.0f",
-            y_title="Prix (USD)",
-            height=320,
-        ))
 
 
 # ---------------------------------------------------------------------------
@@ -210,66 +174,6 @@ def render_onchain(scores: dict[str, IndicatorScore], data: dict) -> None:
                     height=300,
                 ))
 
-    with col_b:
-        if "nupl" in scores:
-            st.markdown("**NUPL** — profits/pertes latentes du marché")
-            _badge(scores["nupl"])
-            mc = data.get("market_cap")
-            rc = data.get("realized_cap")
-            if mc is not None and rc is not None and not mc.empty and not rc.empty:
-                from analysis.indicators import nupl
-                n = nupl(mc["value"], rc["value"]).dropna()
-                _show(line_chart(
-                    "NUPL",
-                    traces=[{"name": "NUPL", "series": n, "color": "#FFB300"}],
-                    h_lines=[
-                        {"y": 0, "label": "Pertes / profits", "color": "#888"},
-                        {"y": 0.75, "label": "Euphorie", "color": "#E53935"},
-                    ],
-                    h_zones=[
-                        {"y0": 0.75, "y1": 1, "color": ZONE_HOT},
-                        {"y0": -1, "y1": 0, "color": ZONE_COLD},
-                    ],
-                    y_format=",.3f",
-                    y_title="NUPL",
-                    height=300,
-                ))
-
-        if "hash_ribbons" in scores:
-            st.markdown("**Hash Ribbons** — capitulation ou expansion mineurs")
-            _badge(scores["hash_ribbons"])
-            hr = data.get("hash_rate")
-            if hr is not None and not hr.empty:
-                ma30 = hr["value"].rolling(30).mean()
-                ma60 = hr["value"].rolling(60).mean()
-                _show(line_chart(
-                    "Hash rate MA30 vs MA60",
-                    traces=[
-                        {"name": "Hash MA30", "series": ma30, "color": "#4FC3F7"},
-                        {"name": "Hash MA60", "series": ma60, "color": "#EF5350"},
-                    ],
-                    y_format=",.2e",
-                    y_title="Hash rate",
-                    height=300,
-                ))
-
-    if "realized_price" in scores:
-        st.markdown("**Realized Price** — prix d'achat moyen du marché")
-        _badge(scores["realized_price"])
-        rp = data.get("realized_price")
-        btc = data["btc"]["value"]
-        if rp is not None and not rp.empty:
-            _show(line_chart(
-                "Prix vs Realized Price",
-                traces=[
-                    {"name": "Prix BTC", "series": btc, "color": "#FFB300"},
-                    {"name": "Realized Price", "series": rp["value"], "color": "#4FC3F7"},
-                ],
-                y_log=True,
-                y_format=",.0f",
-                y_title="USD",
-                height=320,
-            ))
 
 
 # ---------------------------------------------------------------------------

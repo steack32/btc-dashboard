@@ -17,39 +17,36 @@ TTL_HOURS: dict[str, int] = {
 }
 
 # Pondérations du score agrégé (somme = 1.0)
+# Refonte : MVRV Z + Mayer (MA200) tirent la moitié du score, les autres
+# complètent. NUPL, MA200W, Pi Cycle, Hash Ribbons et Realized Price ont
+# été retirés (redondance mathématique avec MVRV Z et Mayer).
 WEIGHTS: dict[str, float] = {
-    "mvrv_z": 0.20,
-    "puell": 0.12,
-    "mayer": 0.12,
-    "rsi_weekly": 0.10,
-    "nupl": 0.10,
-    "ma200w": 0.08,
-    "pi_cycle": 0.05,
-    "hash_ribbons": 0.05,
-    "btc_gold": 0.05,
+    "mvrv_z": 0.25,
+    "mayer": 0.25,
+    "rsi_weekly": 0.15,
+    "puell": 0.15,
+    "btc_gold": 0.10,
     "dxy": 0.05,
     "fear_greed": 0.05,
-    "realized_price": 0.03,
 }
 
 assert abs(sum(WEIGHTS.values()) - 1.0) < 1e-9, "Pondérations non normalisées"
 
-# Paliers du verdict global (borne supérieure incluse)
+# Paliers du verdict global (borne supérieure incluse).
+# Trois catégories actionnables plutôt que cinq descriptives :
+#   0-40   : zone d'accumulation (acheter par tranches)
+#   40-75  : rester sur ses positions
+#   75-100 : prises de bénéfices à envisager
 VERDICT_BANDS: list[tuple[float, str]] = [
-    (20, "Capitulation"),
-    (40, "Baissier"),
-    (60, "Neutre"),
-    (80, "Haussier"),
-    (100, "Euphorie"),
+    (40, "Accumuler"),
+    (75, "Ne rien faire"),
+    (100, "Vendre"),
 ]
 
-# Couleurs associées aux paliers (pour le bandeau d'en-tête)
 VERDICT_COLORS: dict[str, str] = {
-    "Capitulation": "#1565C0",
-    "Baissier": "#90A4AE",
-    "Neutre": "#9E9E9E",
-    "Haussier": "#43A047",
-    "Euphorie": "#E53935",
+    "Accumuler": "#43A047",     # vert : opportunité
+    "Ne rien faire": "#FFB300", # orange : statu quo
+    "Vendre": "#E53935",        # rouge : zone risquée
 }
 
 # Halvings Bitcoin (UTC)
