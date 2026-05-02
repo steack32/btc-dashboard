@@ -12,20 +12,15 @@ from ui.charts import GAUGE_CONFIG, gauge
 
 
 def render_meta_bar() -> None:
-    """Petit bandeau sous le hero avec timestamp et sources de données."""
+    """Petit bandeau sous le hero avec timestamp et sources (tooltip)."""
     now = datetime.now().strftime("%d %b %Y · %H:%M")
-    sources_html = (
-        "<span>yfinance</span> · "
-        "<span>CoinMetrics</span> · "
-        "<span>blockchain.com</span> · "
-        "<span>bitcoin-data.com</span> · "
-        "<span>alternative.me</span>"
-    )
+    sources_text = "yfinance, CoinMetrics, blockchain.com, bitcoin-data.com, alternative.me"
     st.markdown(
         f"<div class='dashboard-meta'>"
         f"<div><span class='live-dot'></span>"
         f"<b>Données à jour</b> · {now}</div>"
-        f"<div class='meta-sources'>Sources : {sources_html}</div>"
+        f"<div><span class='sources-info' title='{sources_text}'>"
+        f"5 sources publiques</span></div>"
         f"</div>",
         unsafe_allow_html=True,
     )
@@ -126,8 +121,37 @@ def render_header(
         for c, k in zip(cols, kpis):
             _kpi(c, k["label"], k["value"], k.get("delta"), k.get("delta_color"))
 
-    # Bandeau cycle
-    cycle_html = f"<strong>Jour {days_since_halving}</strong> après le dernier halving"
-    if days_until_next is not None:
-        cycle_html += f"  ·  prochain halving estimé dans <strong>{days_until_next} jours</strong>"
-    st.markdown(f"<div class='cycle-bar'>{cycle_html}</div>", unsafe_allow_html=True)
+    # Bandeau cycle : progress bar visuelle entre les deux halvings
+    if days_until_next is not None and days_until_next > 0:
+        total_cycle = days_since_halving + days_until_next
+        pct = (days_since_halving / total_cycle * 100) if total_cycle > 0 else 0
+        from datetime import date, timedelta
+        next_date = date.today() + timedelta(days=days_until_next)
+        next_label = next_date.strftime("%b %Y").lower()
+        st.markdown(
+            f"<div class='cycle-progress'>"
+            f"<div class='cycle-progress-header'>"
+            f"<div>Cycle Bitcoin · <b>jour {days_since_halving}</b> "
+            f"sur ~{total_cycle}</div>"
+            f"<div><b>{pct:.0f}%</b> du cycle écoulé</div>"
+            f"</div>"
+            f"<div class='cycle-progress-track'>"
+            f"<div class='cycle-progress-fill' style='width:{pct:.1f}%;'></div>"
+            f"</div>"
+            f"<div class='cycle-progress-labels'>"
+            f"<span>Halving avr 2024</span>"
+            f"<span>Prochain halving · {next_label}</span>"
+            f"</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"<div class='cycle-progress'>"
+            f"<div class='cycle-progress-header'>"
+            f"<div>Cycle Bitcoin · <b>jour {days_since_halving}</b> "
+            f"après le dernier halving</div>"
+            f"</div>"
+            f"</div>",
+            unsafe_allow_html=True,
+        )

@@ -94,13 +94,13 @@ def apply_theme() -> None:
                 transparent 100%);
         }}
 
-        /* Bandeau meta : timestamp + sources, juste sous le hero */
+        /* Bandeau meta : timestamp + sources (en tooltip), juste sous le hero */
         .dashboard-meta {{
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 1rem;
-            padding: 0.55rem 1rem;
+            padding: 0.5rem 1rem;
             background: rgba(22, 24, 28, 0.4);
             border: 1px solid {PALETTE['border']};
             border-radius: 10px;
@@ -129,8 +129,59 @@ def apply_theme() -> None:
             color: {PALETTE['text']};
             font-weight: 600;
         }}
-        .dashboard-meta .meta-sources span {{
+        .dashboard-meta .sources-info {{
+            cursor: help;
+            border-bottom: 1px dotted {PALETTE['text_dim']};
+            color: {PALETTE['text_muted']};
+        }}
+        .dashboard-meta .sources-info:hover {{
+            color: {PALETTE['accent']};
+            border-bottom-color: {PALETTE['accent']};
+        }}
+
+        /* Cycle progress bar : barre horizontale entre deux halvings */
+        .cycle-progress {{
+            background: {PALETTE['surface']};
+            border: 1px solid {PALETTE['border']};
+            border-left: 2px solid {PALETTE['accent']};
+            border-radius: 10px;
+            padding: 0.7rem 1rem;
+            margin: 0.6rem 0;
+        }}
+        .cycle-progress-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-size: 0.82rem;
+            color: {PALETTE['text_muted']};
+            margin-bottom: 0.5rem;
+        }}
+        .cycle-progress-header b {{
+            color: {PALETTE['text']};
+            font-weight: 600;
+        }}
+        .cycle-progress-track {{
+            position: relative;
+            height: 6px;
+            background: {PALETTE['bg']};
+            border-radius: 100px;
+            overflow: hidden;
+        }}
+        .cycle-progress-fill {{
+            position: absolute;
+            top: 0; left: 0; bottom: 0;
+            background: linear-gradient(90deg,
+                {PALETTE['accent']} 0%,
+                {PALETTE['accent_soft']} 100%);
+            border-radius: 100px;
+            box-shadow: 0 0 8px rgba(247, 147, 26, 0.4);
+        }}
+        .cycle-progress-labels {{
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
             color: {PALETTE['text_dim']};
+            margin-top: 0.4rem;
         }}
 
         /* Navigation flottante par sections.
