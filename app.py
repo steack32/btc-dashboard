@@ -287,7 +287,13 @@ def main() -> None:
 
     st.markdown("<div id='strategie' class='section-anchor'></div>", unsafe_allow_html=True)
     with st.container(border=True):
-        render_strategy_simulation(history, buy_low=10.0, buy_mid=5.0, sell_high=20.0)
+        render_strategy_simulation(
+            history,
+            capital_start=10000.0,
+            buy_pct_low=0.01,
+            buy_pct_mid=0.005,
+            sell_pct_high=0.02,
+        )
 
     # Pied de page minimaliste — le timestamp et les sources sont déjà
     # dans le bandeau meta en haut, on ne les répète pas ici.

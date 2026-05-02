@@ -194,22 +194,28 @@ def compute_historical_scores(data: dict, start: pd.Timestamp = BACKTEST_START) 
 
 def simulate_strategy(
     history: pd.DataFrame,
-    buy_low: float = 10.0,    # achat quotidien en zone Accumuler
-    buy_mid: float = 5.0,     # achat quotidien en zone Ne rien faire
-    sell_high: float = 20.0,  # vente quotidienne en zone Vendre
+    capital_start: float = 10000.0,
+    buy_pct_low: float = 0.01,    # 1 % du capital de départ en zone Accumuler
+    buy_pct_mid: float = 0.005,   # 0.5 % du capital de départ en zone Ne rien faire
+    sell_pct_high: float = 0.02,  # 2 % du stack BTC en zone Vendre
 ) -> pd.DataFrame:
-    """Simule une stratégie à trois paliers basée sur le palier du score.
+    """Simule une stratégie à trois paliers, raisonnée en pourcentages.
 
     Règles :
-      - Palier "Accumuler"    : on achète buy_low par jour
-      - Palier "Ne rien faire": on achète buy_mid par jour (DCA réduit)
-      - Palier "Vendre"       : on vend sell_high par jour
-        (ou tout ce qu'il reste en BTC si moins disponible)
+      - Palier "Accumuler"    : achat quotidien de `capital_start * buy_pct_low`
+      - Palier "Ne rien faire": achat quotidien de `capital_start * buy_pct_mid`
+      - Palier "Vendre"       : vente quotidienne de `btc_position * sell_pct_high` BTC
 
-    Tous les montants sont dans la même unité que le prix BTC du dataset
-    (USD). À l'affichage on les présentera en € (parité 1:1 acceptée
-    comme approximation, l'EUR/USD oscille entre 0.95 et 1.20 sur la période).
+    Le pourcentage à l'achat est appliqué sur le capital de départ (montant
+    € fixe par jour). Le pourcentage à la vente est appliqué sur les BTC
+    détenus (montant € variable selon le stack et le prix du jour).
+
+    Tous les montants sont dans la même unité que le prix BTC (USD).
+    Affichage en € avec parité 1:1 retenue comme approximation.
     """
+    daily_buy_low = capital_start * buy_pct_low
+    daily_buy_mid = capital_start * buy_pct_mid
+
     btc_position = 0.0
     cash_realized = 0.0
     total_invested = 0.0
@@ -223,23 +229,20 @@ def simulate_strategy(
 
         if pd.notna(price) and pd.notna(palier):
             if palier == "Accumuler":
-                btc_position += buy_low / price
-                total_invested += buy_low
-                buy_eur = buy_low
+                btc_position += daily_buy_low / price
+                total_invested += daily_buy_low
+                buy_eur = daily_buy_low
             elif palier == "Ne rien faire":
-                if buy_mid > 0:
-                    btc_position += buy_mid / price
-                    total_invested += buy_mid
-                    buy_eur = buy_mid
+                if daily_buy_mid > 0:
+                    btc_position += daily_buy_mid / price
+                    total_invested += daily_buy_mid
+                    buy_eur = daily_buy_mid
             elif palier == "Vendre":
-                btc_to_sell = sell_high / price
-                if btc_position >= btc_to_sell:
+                btc_to_sell = btc_position * sell_pct_high
+                if btc_to_sell > 0:
+                    sell_eur = btc_to_sell * price
                     btc_position -= btc_to_sell
-                    sell_eur = sell_high
-                elif btc_position > 0:
-                    sell_eur = btc_position * price
-                    btc_position = 0.0
-                cash_realized += sell_eur
+                    cash_realized += sell_eur
 
         portfolio = (btc_position * price if pd.notna(price) else 0.0) + cash_realized
         pnl = portfolio - total_invested

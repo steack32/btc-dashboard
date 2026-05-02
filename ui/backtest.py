@@ -297,25 +297,38 @@ def _kpi_card(col, label: str, value: str, delta: str = "", color: str | None = 
 
 def render_strategy_simulation(
     history: pd.DataFrame,
-    buy_low: float = 10.0,
-    buy_mid: float = 5.0,
-    sell_high: float = 20.0,
+    capital_start: float = 10000.0,
+    buy_pct_low: float = 0.01,
+    buy_pct_mid: float = 0.005,
+    sell_pct_high: float = 0.02,
 ) -> None:
     if history.empty:
         return
 
+    daily_buy_low = capital_start * buy_pct_low
+    daily_buy_mid = capital_start * buy_pct_mid
+
     st.subheader("Simulation de stratégie")
     st.caption(
-        f"Règle simulée : **+{buy_low:.0f}€/jour** en zone Accumuler · "
-        f"**+{buy_mid:.0f}€/jour** en zone Ne rien faire · "
-        f"**−{sell_high:.0f}€/jour** en zone Vendre. "
-        "Comparaison avec un DCA classique de même intensité moyenne et un Buy & Hold de capital équivalent."
+        f"Capital de départ **{capital_start:,.0f} €**".replace(",", " ") + " · "
+        f"**+{buy_pct_low*100:.1f} %/jour** en Accumuler "
+        f"({daily_buy_low:,.0f} €)".replace(",", " ") + " · "
+        f"**+{buy_pct_mid*100:.1f} %/jour** en Ne rien faire "
+        f"({daily_buy_mid:,.0f} €)".replace(",", " ") + " · "
+        f"**−{sell_pct_high*100:.0f} % du stack BTC/jour** en Vendre. "
+        "Comparaison avec un DCA classique d'intensité équivalente et un Buy & Hold de capital égal."
     )
 
-    sim = bt.simulate_strategy(history, buy_low=buy_low, buy_mid=buy_mid, sell_high=sell_high)
-    # Pour la baseline DCA, on prend la moyenne pondérée des deux montants d'achat
-    # comme "intensité moyenne" — c'est plus représentatif que le seul buy_low.
-    avg_buy = (buy_low + buy_mid) / 2
+    sim = bt.simulate_strategy(
+        history,
+        capital_start=capital_start,
+        buy_pct_low=buy_pct_low,
+        buy_pct_mid=buy_pct_mid,
+        sell_pct_high=sell_pct_high,
+    )
+    # Pour la baseline DCA, on utilise la moyenne des deux montants d'achat
+    # comme "intensité moyenne" représentative du DCA équivalent.
+    avg_buy = (daily_buy_low + daily_buy_mid) / 2
     dca = bt.simulate_dca(history, avg_buy)
     bh = bt.simulate_buy_and_hold(history, dca["total_invested"].iloc[-1])
 
