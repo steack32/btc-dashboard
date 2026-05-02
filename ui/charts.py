@@ -16,6 +16,8 @@ from __future__ import annotations
 import pandas as pd
 import plotly.graph_objects as go
 
+from config import PALETTE
+
 
 # Configuration passée à st.plotly_chart pour activer molette + barre d'outils complète
 CHART_CONFIG = {
@@ -63,23 +65,23 @@ def _base_layout(
     uikey: str = "default",
 ) -> dict:
     xaxis: dict = dict(
-        gridcolor="#222",
+        gridcolor=PALETTE["border"],
         showgrid=True,
         zeroline=False,
         showspikes=True,
         spikemode="across",
         spikethickness=1.2,
-        spikecolor="#FFB300",
+        spikecolor=PALETTE["accent"],
         spikedash="solid",
         spikesnap="cursor",
         showline=True,
-        linecolor="#444",
+        linecolor=PALETTE["border_strong"],
         tickformatstops=_TICKFORMAT_STOPS,
         rangeslider=dict(
             visible=with_rangeslider,
             thickness=0.05,
-            bgcolor="#0F0F0F",
-            bordercolor="#333",
+            bgcolor=PALETTE["bg"],
+            bordercolor=PALETTE["border"],
             borderwidth=1,
         ),
         type="date",
@@ -93,9 +95,9 @@ def _base_layout(
                 dict(count=3, label="3A", step="year", stepmode="backward"),
                 dict(step="all", label="Tout"),
             ],
-            bgcolor="#1A1A1A",
-            activecolor="#FFB300",
-            font=dict(color="#E0E0E0", size=11),
+            bgcolor=PALETTE["surface"],
+            activecolor=PALETTE["accent"],
+            font=dict(color=PALETTE["text"], size=11),
             x=0,
             y=1.12,
             xanchor="left",
@@ -103,29 +105,29 @@ def _base_layout(
         )
 
     yaxis = dict(
-        gridcolor="#222",
+        gridcolor=PALETTE["border"],
         showgrid=True,
         zeroline=False,
         showspikes=True,
         spikemode="across",
         spikethickness=1.2,
-        spikecolor="#FFB300",
+        spikecolor=PALETTE["accent"],
         spikedash="solid",
         spikesnap="cursor",
         showline=True,
-        linecolor="#444",
+        linecolor=PALETTE["border_strong"],
         side="right",
         autorange=True,
         fixedrange=False,
     )
 
     return dict(
-        title=dict(text=title, font=dict(size=14, color="#E0E0E0"), x=0.0, y=0.97),
+        title=dict(text=title, font=dict(size=14, color=PALETTE["text"]), x=0.0, y=0.97),
         height=height,
         margin=dict(l=10, r=60, t=70 if with_rangeselector else 40, b=10),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#E0E0E0", family="Inter, system-ui, sans-serif"),
+        font=dict(color=PALETTE["text"], family="Inter, system-ui, sans-serif"),
         xaxis=xaxis,
         yaxis=yaxis,
         legend=dict(
@@ -139,17 +141,17 @@ def _base_layout(
         ),
         hovermode="x unified",
         hoverlabel=dict(
-            bgcolor="rgba(15,15,15,0.95)",
-            bordercolor="#444",
-            font=dict(color="#E0E0E0", size=12, family="Inter, system-ui, sans-serif"),
+            bgcolor=PALETTE["surface"],
+            bordercolor=PALETTE["border_strong"],
+            font=dict(color=PALETTE["text"], size=12, family="Inter, system-ui, sans-serif"),
         ),
-        dragmode="pan",         # pan par défaut, comme TradingView
-        uirevision=uikey,       # préserve zoom/pan entre rerenders Streamlit
-        newshape=dict(line=dict(color="#FFB300", width=2)),
+        dragmode="pan",
+        uirevision=uikey,
+        newshape=dict(line=dict(color=PALETTE["accent"], width=2)),
         modebar=dict(
             bgcolor="rgba(0,0,0,0)",
-            color="#777",
-            activecolor="#FFB300",
+            color=PALETTE["text_muted"],
+            activecolor=PALETTE["accent"],
             orientation="v",
         ),
     )
@@ -186,7 +188,7 @@ def line_chart(
             name=t["name"],
             mode="lines",
             line=dict(
-                color=t.get("color", "#FFB300"),
+                color=t.get("color", PALETTE["accent"]),
                 width=t.get("width", 1.8),
                 dash=t.get("dash", "solid"),
                 shape="linear",
@@ -220,7 +222,7 @@ def line_chart(
 
     # Lignes horizontales de seuil
     for h in h_lines or []:
-        color = h.get("color", "#888")
+        color = h.get("color", PALETTE["text_muted"])
         fig.add_hline(
             y=h["y"],
             line=dict(color=color, dash=h.get("dash", "dash"), width=1),
@@ -232,33 +234,58 @@ def line_chart(
 
 
 def gauge(score: float, color: str) -> go.Figure:
-    """Jauge horizontale 0-100 pour le score global."""
+    """Compteur angulaire (style tachymètre) pour le score global.
+
+    L'aiguille (threshold) est colorée selon le palier — vert/or/rouge.
+    Les bandes de fond sont les zones d'accumulation / neutre / vente.
+    """
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=score,
-        domain={"x": [0, 1], "y": [0, 1]},
-        number={"font": {"size": 56, "color": color}, "suffix": "/100"},
+        domain={"x": [0, 1], "y": [0.05, 1]},
+        number={
+            "font": {
+                "size": 76,
+                "color": PALETTE["text"],
+                "family": "Inter, sans-serif",
+            },
+            "suffix": "<span style='font-size:0.42em; color:" + PALETTE["text_dim"] + ";'> / 100</span>",
+            "valueformat": ".0f",
+        },
         gauge={
-            "axis": {"range": [0, 100], "tickwidth": 1, "tickcolor": "#888"},
-            "bar": {"color": color, "thickness": 0.35},
+            "shape": "angular",
+            "axis": {
+                "range": [0, 100],
+                "tickwidth": 0,
+                "tickcolor": PALETTE["text_dim"],
+                "tickfont": {
+                    "size": 11,
+                    "color": PALETTE["text_dim"],
+                    "family": "Inter, sans-serif",
+                },
+                "tickvals": [0, 40, 75, 100],
+                "ticktext": ["0", "40", "75", "100"],
+            },
+            "bar": {"color": "rgba(0,0,0,0)", "thickness": 0},
             "bgcolor": "rgba(0,0,0,0)",
             "borderwidth": 0,
             "steps": [
-                {"range": [0, 40], "color": "#1B5E20"},
-                {"range": [40, 75], "color": "#5D4037"},
-                {"range": [75, 100], "color": "#7F1D1D"},
+                # Bandes désaturées : on ne veut pas voler la vedette à l'aiguille
+                {"range": [0, 40], "color": "#1F3A2A"},   # vert très sombre — Accumuler
+                {"range": [40, 75], "color": "#3A331F"},  # or très sombre — Ne rien faire
+                {"range": [75, 100], "color": "#3A1F1F"}, # rouge très sombre — Vendre
             ],
             "threshold": {
-                "line": {"color": "#FFFFFF", "width": 3},
-                "thickness": 0.75,
+                "line": {"color": color, "width": 5},
+                "thickness": 0.85,
                 "value": score,
             },
         },
     ))
     fig.update_layout(
-        height=240,
-        margin=dict(l=20, r=20, t=20, b=10),
+        height=290,
+        margin=dict(l=20, r=20, t=10, b=20),
         paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#E0E0E0"),
+        font=dict(color=PALETTE["text"], family="Inter, sans-serif"),
     )
     return fig

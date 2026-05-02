@@ -11,6 +11,7 @@ import streamlit as st
 
 from analysis import indicators as ind
 from analysis import scoring as sc
+from config import PALETTE
 from data import sources as ds
 from ui.header import render_header
 from ui.sections import (
@@ -20,14 +21,18 @@ from ui.sections import (
     render_sentiment,
     render_summary_table,
 )
+from ui.theme import apply_theme
 
 
 st.set_page_config(
-    page_title="BTC — Haussier ou pas ?",
+    page_title="Bitcoin Dashboard",
     page_icon="₿",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+
+apply_theme()
+
 
 # ---------------------------------------------------------------------------
 # Chargement des données (cache Streamlit + cache disque par-dessus)
@@ -61,6 +66,16 @@ def _last_value_series(s: pd.Series | None) -> float:
     return float(s.iloc[-1]) if not s.empty else float("nan")
 
 
+def _pct_change(s: pd.Series, days: int) -> float:
+    """Variation en % sur N jours, NaN si pas assez d'historique."""
+    if s is None or s.empty or len(s) <= days:
+        return float("nan")
+    last, ref = s.iloc[-1], s.iloc[-1 - days]
+    if ref == 0 or pd.isna(ref) or pd.isna(last):
+        return float("nan")
+    return (float(last) / float(ref) - 1) * 100
+
+
 # ---------------------------------------------------------------------------
 # Calcul des scores
 # ---------------------------------------------------------------------------
@@ -70,9 +85,7 @@ def compute_scores(data: dict) -> tuple[list[sc.IndicatorScore], dict[str, sc.In
 
     btc = data["btc"]
     btc_price = btc["value"] if not btc.empty else pd.Series(dtype=float)
-    last_price = _last_value_series(btc_price)
 
-    # Technique
     if not btc_price.empty:
         rsi_w = ind.rsi_weekly(btc_price)
         scores.append(sc.score_rsi_weekly(_last_value_series(rsi_w)))
@@ -80,7 +93,6 @@ def compute_scores(data: dict) -> tuple[list[sc.IndicatorScore], dict[str, sc.In
         mayer = ind.mayer_multiple(btc_price)
         scores.append(sc.score_mayer(_last_value_series(mayer)))
 
-    # On-chain — MVRV Z (avec fallback local si l'API distante a renvoyé vide)
     mvrv = data.get("mvrv_z")
     if mvrv is not None and not mvrv.empty:
         scores.append(sc.score_mvrv_z(_last_value(mvrv)))
@@ -91,13 +103,11 @@ def compute_scores(data: dict) -> tuple[list[sc.IndicatorScore], dict[str, sc.In
             z_local = ind.mvrv_zscore_local(mc["value"], rc["value"])
             scores.append(sc.score_mvrv_z(_last_value_series(z_local)))
 
-    # Puell (calcul local fiable)
     mr = data.get("miner_revenue")
     if mr is not None and not mr.empty:
         puell = ind.puell_multiple(mr["value"])
         scores.append(sc.score_puell(_last_value_series(puell)))
 
-    # Macro — BTC/Gold
     gold = data.get("gold")
     if gold is not None and not gold.empty and not btc_price.empty:
         bg = ind.btc_gold_ratio(btc_price, gold["value"])
@@ -105,13 +115,11 @@ def compute_scores(data: dict) -> tuple[list[sc.IndicatorScore], dict[str, sc.In
         if last_bg is not None:
             scores.append(sc.score_btc_gold(float(last_bg["ratio"]), float(last_bg["ratio_ma200"])))
 
-    # DXY
     dxy = data.get("dxy")
     if dxy is not None and not dxy.empty:
         trend = ind.dxy_trend(dxy["value"])
         scores.append(sc.score_dxy(_last_value_series(trend)))
 
-    # Sentiment — Fear & Greed
     fng = data.get("fear_greed")
     if fng is not None and not fng.empty:
         scores.append(sc.score_fear_greed(_last_value(fng)))
@@ -121,25 +129,103 @@ def compute_scores(data: dict) -> tuple[list[sc.IndicatorScore], dict[str, sc.In
 
 
 # ---------------------------------------------------------------------------
+# KPIs rapides du hero
+# ---------------------------------------------------------------------------
+
+def build_kpis(data: dict, scores: dict) -> list[dict]:
+    """Construit la grille de KPIs affichée sous le compteur."""
+    btc = data["btc"]["value"] if not data["btc"].empty else pd.Series(dtype=float)
+    last_price = _last_value_series(btc)
+    chg_7 = _pct_change(btc, 7)
+    chg_30 = _pct_change(btc, 30)
+
+    def _delta_color(v: float) -> str:
+        if pd.isna(v):
+            return PALETTE["text_muted"]
+        return PALETTE["success"] if v >= 0 else PALETTE["danger"]
+
+    def _delta_str(v: float) -> str:
+        if pd.isna(v):
+            return ""
+        sign = "+" if v >= 0 else ""
+        return f"{sign}{v:.2f}% sur la période"
+
+    # Prix BTC formaté
+    if not pd.isna(last_price):
+        if last_price >= 1000:
+            price_str = f"${last_price:,.0f}".replace(",", " ")
+        else:
+            price_str = f"${last_price:,.2f}"
+    else:
+        price_str = "—"
+
+    kpis = [
+        {
+            "label": "Prix BTC",
+            "value": price_str,
+            "delta": f"+{chg_7:.2f}% (7j)" if not pd.isna(chg_7) and chg_7 >= 0
+                     else (f"{chg_7:.2f}% (7j)" if not pd.isna(chg_7) else ""),
+            "delta_color": _delta_color(chg_7),
+        },
+        {
+            "label": "Variation 30j",
+            "value": (f"+{chg_30:.1f}%" if not pd.isna(chg_30) and chg_30 >= 0
+                      else (f"{chg_30:.1f}%" if not pd.isna(chg_30) else "—")),
+            "delta": "",
+            "delta_color": _delta_color(chg_30),
+        },
+    ]
+
+    if "mvrv_z" in scores:
+        s = scores["mvrv_z"]
+        kpis.append({
+            "label": "MVRV Z-Score",
+            "value": f"{s.raw:.2f}" if not pd.isna(s.raw) else "—",
+            "delta": s.interpretation,
+            "delta_color": PALETTE["text_muted"],
+        })
+
+    if "mayer" in scores:
+        s = scores["mayer"]
+        kpis.append({
+            "label": "Mayer Multiple",
+            "value": f"{s.raw:.2f}" if not pd.isna(s.raw) else "—",
+            "delta": s.interpretation,
+            "delta_color": PALETTE["text_muted"],
+        })
+
+    if "rsi_weekly" in scores:
+        s = scores["rsi_weekly"]
+        kpis.append({
+            "label": "RSI hebdo",
+            "value": f"{s.raw:.0f}" if not pd.isna(s.raw) else "—",
+            "delta": s.interpretation,
+            "delta_color": PALETTE["text_muted"],
+        })
+
+    if "fear_greed" in scores:
+        s = scores["fear_greed"]
+        kpis.append({
+            "label": "Fear & Greed",
+            "value": f"{s.raw:.0f}" if not pd.isna(s.raw) else "—",
+            "delta": s.interpretation,
+            "delta_color": PALETTE["text_muted"],
+        })
+
+    return kpis
+
+
+# ---------------------------------------------------------------------------
 # Layout principal
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    st.markdown(
-        "<h1 style='margin-bottom:0;'>Bitcoin — Haussier ou pas ?</h1>"
-        "<p style='color:#999; margin-top:0;'>"
-        "Lecture multi-indicateurs pour positionnement moyen-long terme."
-        "</p>",
-        unsafe_allow_html=True,
-    )
-
     with st.spinner("Récupération des données..."):
         data = load_all_data()
 
     if data["btc"].empty:
         st.error(
-            "Impossible de récupérer le prix BTC depuis yfinance. "
-            "Vérifie ta connexion ou réessaie dans quelques minutes."
+            "Impossible de récupérer le prix BTC. Vérifie ta connexion ou réessaie dans quelques minutes."
         )
         st.stop()
 
@@ -147,27 +233,28 @@ def main() -> None:
     agg, palier = sc.aggregate(scores_list)
     verdict = sc.generate_verdict(scores_list, agg, palier)
 
-    # En-tête : score + verdict + cycle
     days_post = ind.days_since_last_halving()
     days_next = ind.days_until_next_halving()
-    render_header(agg, palier, verdict, days_post, days_next)
+    kpis = build_kpis(data, scores)
 
-    # Sections détaillées
+    render_header(agg, palier, verdict, days_post, days_next, kpis=kpis)
+
     render_technique(scores, data)
-    st.divider()
     render_onchain(scores, data)
-    st.divider()
     render_macro(scores, data)
-    st.divider()
     render_sentiment(scores, data)
-    st.divider()
     render_summary_table(scores_list)
 
     # Pied de page
-    st.caption(
-        f"Dernière mise à jour : {datetime.now().strftime('%Y-%m-%d %H:%M')}  ·  "
-        "Sources : yfinance, blockchain.com/charts, bitcoin-data.com, alternative.me  ·  "
-        "Ce dashboard est un outil d'aide à la lecture, pas un conseil en investissement."
+    st.markdown(
+        f"""
+        <div class='dashboard-footer'>
+            Dernière mise à jour : {datetime.now().strftime('%d %b %Y, %H:%M')}
+            · Sources : yfinance, blockchain.com, CoinMetrics, bitcoin-data.com, alternative.me
+            · Ce dashboard est un outil d'aide à la lecture, pas un conseil en investissement.
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
 

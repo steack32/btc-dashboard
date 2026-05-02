@@ -5,12 +5,13 @@ import pandas as pd
 import streamlit as st
 
 from analysis.scoring import IndicatorScore
+from config import PALETTE
 from ui.charts import CHART_CONFIG, line_chart
 
 
-# Couleurs des bandes critiques en arrière-plan
-ZONE_HOT = "rgba(229, 57, 53, 0.07)"   # surchauffe / sur-acheté
-ZONE_COLD = "rgba(21, 101, 192, 0.07)"  # capitulation / sous-évalué
+# Couleurs des bandes critiques en arrière-plan (transparentes)
+ZONE_HOT = "rgba(209, 69, 69, 0.06)"   # rouge brique transparent
+ZONE_COLD = "rgba(91, 127, 184, 0.06)" # bleu acier transparent
 
 
 # ---------------------------------------------------------------------------
@@ -18,26 +19,24 @@ ZONE_COLD = "rgba(21, 101, 192, 0.07)"  # capitulation / sous-évalué
 # ---------------------------------------------------------------------------
 
 def _color_for_score(s: float) -> str:
-    if s < 20:
-        return "#1565C0"
     if s < 40:
-        return "#90A4AE"
-    if s < 60:
-        return "#9E9E9E"
-    if s < 80:
-        return "#43A047"
-    return "#E53935"
+        return PALETTE["success"]
+    if s < 75:
+        return PALETTE["warning"]
+    return PALETTE["danger"]
 
 
 def _badge(score: IndicatorScore) -> None:
     color = _color_for_score(score.sub_score)
     raw = f"{score.raw:.2f}" if isinstance(score.raw, (int, float)) and score.raw == score.raw else "—"
     st.markdown(
-        f"<div style='display:flex; gap:1rem; align-items:baseline;'>"
-        f"<div style='font-size:1.5rem; font-weight:600; color:{color};'>{score.sub_score:.0f}/100</div>"
-        f"<div style='color:#BBB;'>· {score.interpretation}</div>"
-        f"<div style='color:#888; margin-left:auto;'>valeur : <b>{raw}</b></div>"
-        f"</div>",
+        f"""
+        <div class='indicator-row'>
+            <div class='indicator-score' style='color:{color};'>{score.sub_score:.0f}/100</div>
+            <div class='indicator-label'>· {score.interpretation}</div>
+            <div class='indicator-raw'>valeur : <b>{raw}</b></div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
     if score.note:
@@ -72,9 +71,9 @@ def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
         _show(line_chart(
             "BTC vs MA50, MA200",
             traces=[
-                {"name": "BTC", "series": btc, "color": "#FFB300", "width": 1.8},
-                {"name": "MA50", "series": ma50, "color": "#4FC3F7", "dash": "dot"},
-                {"name": "MA200", "series": ma200, "color": "#EF5350", "dash": "dot"},
+                {"name": "BTC", "series": btc, "color": PALETTE["accent"], "width": 1.8},
+                {"name": "MA50", "series": ma50, "color": PALETTE["info"], "dash": "dot"},
+                {"name": "MA200", "series": ma200, "color": PALETTE["danger"], "dash": "dot"},
             ],
             y_log=True,
             y_format=",.0f",
@@ -88,9 +87,9 @@ def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
             mayer_series = (btc / btc.rolling(200).mean()).dropna()
             _show(line_chart(
                 "Mayer Multiple",
-                traces=[{"name": "Mayer", "series": mayer_series, "color": "#FFB300"}],
+                traces=[{"name": "Mayer", "series": mayer_series, "color": PALETTE["accent"]}],
                 h_lines=[
-                    {"y": 1.0, "label": "Neutre (= MA200)", "color": "#888"},
+                    {"y": 1.0, "label": "Neutre (= MA200)", "color": PALETTE["text_muted"]},
                     {"y": 2.4, "label": "Surchauffe historique", "color": "#E53935"},
                 ],
                 h_zones=[
@@ -110,9 +109,9 @@ def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
             rsi_w = rsi_weekly(btc)
             _show(line_chart(
                 "RSI weekly",
-                traces=[{"name": "RSI W", "series": rsi_w, "color": "#FFB300"}],
+                traces=[{"name": "RSI W", "series": rsi_w, "color": PALETTE["accent"]}],
                 h_lines=[
-                    {"y": 30, "label": "Sous-acheté", "color": "#43A047"},
+                    {"y": 30, "label": "Sous-acheté", "color": PALETTE["success"]},
                     {"y": 70, "label": "Sur-acheté", "color": "#E53935"},
                 ],
                 h_zones=[
@@ -142,9 +141,9 @@ def render_onchain(scores: dict[str, IndicatorScore], data: dict) -> None:
             if mvrv is not None and not mvrv.empty:
                 _show(line_chart(
                     "MVRV Z-Score",
-                    traces=[{"name": "Z-Score", "series": mvrv["value"], "color": "#FFB300"}],
+                    traces=[{"name": "Z-Score", "series": mvrv["value"], "color": PALETTE["accent"]}],
                     h_lines=[
-                        {"y": 0, "label": "Capitulation", "color": "#1565C0"},
+                        {"y": 0, "label": "Capitulation", "color": PALETTE["cold"]},
                         {"y": 7, "label": "Top historique", "color": "#E53935"},
                     ],
                     h_zones=[
@@ -165,9 +164,9 @@ def render_onchain(scores: dict[str, IndicatorScore], data: dict) -> None:
                 puell = puell_multiple(mr["value"]).dropna()
                 _show(line_chart(
                     "Puell Multiple",
-                    traces=[{"name": "Puell", "series": puell, "color": "#FFB300"}],
+                    traces=[{"name": "Puell", "series": puell, "color": PALETTE["accent"]}],
                     h_lines=[
-                        {"y": 0.5, "label": "Capitulation mineurs", "color": "#1565C0"},
+                        {"y": 0.5, "label": "Capitulation mineurs", "color": PALETTE["cold"]},
                         {"y": 4, "label": "Surchauffe", "color": "#E53935"},
                     ],
                     h_zones=[
@@ -201,8 +200,8 @@ def render_macro(scores: dict[str, IndicatorScore], data: dict) -> None:
                 _show(line_chart(
                     "BTC/Or",
                     traces=[
-                        {"name": "Ratio", "series": bg["ratio"], "color": "#FFB300"},
-                        {"name": "MA200", "series": bg["ratio_ma200"], "color": "#EF5350", "dash": "dot"},
+                        {"name": "Ratio", "series": bg["ratio"], "color": PALETTE["accent"]},
+                        {"name": "MA200", "series": bg["ratio_ma200"], "color": PALETTE["danger"], "dash": "dot"},
                     ],
                     y_format=",.0f",
                     y_title="Onces d'or",
@@ -217,7 +216,7 @@ def render_macro(scores: dict[str, IndicatorScore], data: dict) -> None:
             if dxy is not None and not dxy.empty:
                 _show(line_chart(
                     "DXY",
-                    traces=[{"name": "DXY", "series": dxy["value"], "color": "#FFB300"}],
+                    traces=[{"name": "DXY", "series": dxy["value"], "color": PALETTE["accent"]}],
                     y_format=",.2f",
                     y_title="Indice DXY",
                     height=380,
@@ -236,9 +235,9 @@ def render_sentiment(scores: dict[str, IndicatorScore], data: dict) -> None:
         if fng is not None and not fng.empty:
             _show(line_chart(
                 "Fear & Greed Index",
-                traces=[{"name": "F&G", "series": fng["value"], "color": "#FFB300"}],
+                traces=[{"name": "F&G", "series": fng["value"], "color": PALETTE["accent"]}],
                 h_lines=[
-                    {"y": 25, "label": "Peur extrême", "color": "#1565C0"},
+                    {"y": 25, "label": "Peur extrême", "color": PALETTE["cold"]},
                     {"y": 75, "label": "Avidité extrême", "color": "#E53935"},
                 ],
                 h_zones=[

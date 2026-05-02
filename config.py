@@ -44,9 +44,35 @@ VERDICT_BANDS: list[tuple[float, str]] = [
 ]
 
 VERDICT_COLORS: dict[str, str] = {
-    "Accumuler": "#43A047",     # vert : opportunité
-    "Ne rien faire": "#FFB300", # orange : statu quo
-    "Vendre": "#E53935",        # rouge : zone risquée
+    "Accumuler": "#2FBF71",     # vert sage
+    "Ne rien faire": "#D4A044", # or désaturé
+    "Vendre": "#D14545",        # rouge brique
+}
+
+# Palette globale du dashboard (sobre, finance pro)
+PALETTE: dict[str, str] = {
+    # Fonds
+    "bg": "#0E0F11",            # fond principal
+    "surface": "#16181C",       # cards
+    "surface_alt": "#1A1D22",   # cards alternées
+    "border": "#2A2D33",        # bordures fines
+    "border_strong": "#3A3D43", # bordures appuyées
+    # Texte
+    "text": "#E8E9ED",          # texte primaire
+    "text_muted": "#9499A0",    # texte secondaire
+    "text_dim": "#5C6068",      # texte tertiaire
+    # Accents
+    "accent": "#F2A900",        # or Bitcoin officiel (sobre)
+    "info": "#5B9CFA",          # bleu fintech
+    "success": "#2FBF71",       # vert sage
+    "warning": "#D4A044",       # or désaturé
+    "danger": "#D14545",        # rouge brique
+    "cold": "#5B7FB8",          # bleu acier (capitulation)
+    # Couleurs de courbes
+    "series_main": "#F2A900",
+    "series_alt": "#5B9CFA",
+    "series_neutral": "#8B92A0",
+    "series_warm": "#D14545",
 }
 
 # Halvings Bitcoin (UTC)
