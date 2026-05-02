@@ -5,7 +5,12 @@ import pandas as pd
 import streamlit as st
 
 from analysis.scoring import IndicatorScore
-from ui.charts import line_chart
+from ui.charts import CHART_CONFIG, line_chart
+
+
+# Couleurs des bandes critiques en arrière-plan
+ZONE_HOT = "rgba(229, 57, 53, 0.07)"   # surchauffe / sur-acheté
+ZONE_COLD = "rgba(21, 101, 192, 0.07)"  # capitulation / sous-évalué
 
 
 # ---------------------------------------------------------------------------
@@ -39,12 +44,17 @@ def _badge(score: IndicatorScore) -> None:
         st.caption(score.note)
 
 
+def _show(fig) -> None:
+    st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
+
+
 # ---------------------------------------------------------------------------
 # Section Technique
 # ---------------------------------------------------------------------------
 
 def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
     st.subheader("Technique")
+    st.caption("Astuce : utilise les boutons 1M/6M/1A/3A/Tout, ou sélectionne une zone à la souris pour zoomer. Double-clic pour réinitialiser.")
 
     btc = data["btc"]["value"]
     ma50 = btc.rolling(50).mean()
@@ -53,8 +63,8 @@ def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
     col_a, col_b = st.columns(2)
 
     with col_a:
-        st.markdown("**Prix BTC + moyennes mobiles (échelle log)**")
-        fig = line_chart(
+        st.markdown("**Prix BTC + moyennes mobiles** — échelle log")
+        _show(line_chart(
             "BTC vs MA50, MA200",
             traces=[
                 {"name": "BTC", "series": btc, "color": "#FFB300", "width": 1.8},
@@ -62,46 +72,59 @@ def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
                 {"name": "MA200", "series": ma200, "color": "#EF5350", "dash": "dot"},
             ],
             y_log=True,
-            height=340,
-        )
-        st.plotly_chart(fig, use_container_width=True)
+            y_format=",.0f",
+            y_title="Prix (USD)",
+            height=380,
+        ))
 
         if "mayer" in scores:
-            st.markdown("**Mayer Multiple** (prix / MA200)")
+            st.markdown("**Mayer Multiple** — prix divisé par sa MA200 quotidienne")
             _badge(scores["mayer"])
             mayer_series = (btc / btc.rolling(200).mean()).dropna()
-            st.plotly_chart(line_chart(
+            _show(line_chart(
                 "Mayer Multiple",
                 traces=[{"name": "Mayer", "series": mayer_series, "color": "#FFB300"}],
                 h_lines=[
-                    {"y": 1.0, "label": "Neutre", "color": "#888"},
-                    {"y": 2.4, "label": "Surchauffe", "color": "#E53935"},
+                    {"y": 1.0, "label": "Neutre (= MA200)", "color": "#888"},
+                    {"y": 2.4, "label": "Surchauffe historique", "color": "#E53935"},
                 ],
-                height=240,
-            ), use_container_width=True)
+                h_zones=[
+                    {"y0": 2.4, "y1": 10, "color": ZONE_HOT},
+                    {"y0": 0, "y1": 0.85, "color": ZONE_COLD},
+                ],
+                y_format=",.2f",
+                y_title="Multiple",
+                height=280,
+            ))
 
     with col_b:
         if "rsi_weekly" in scores:
-            st.markdown("**RSI hebdomadaire (14)**")
+            st.markdown("**RSI hebdomadaire (14)** — momentum long terme")
             _badge(scores["rsi_weekly"])
             from analysis.indicators import rsi_weekly
             rsi_w = rsi_weekly(btc)
-            st.plotly_chart(line_chart(
+            _show(line_chart(
                 "RSI weekly",
                 traces=[{"name": "RSI W", "series": rsi_w, "color": "#FFB300"}],
                 h_lines=[
                     {"y": 30, "label": "Sous-acheté", "color": "#43A047"},
                     {"y": 70, "label": "Sur-acheté", "color": "#E53935"},
                 ],
-                height=240,
-            ), use_container_width=True)
+                h_zones=[
+                    {"y0": 70, "y1": 100, "color": ZONE_HOT},
+                    {"y0": 0, "y1": 30, "color": ZONE_COLD},
+                ],
+                y_format=",.1f",
+                y_title="RSI",
+                height=280,
+            ))
 
         if "pi_cycle" in scores:
-            st.markdown("**Pi Cycle Top**")
+            st.markdown("**Pi Cycle Top** — croisement MA111 / 2×MA350")
             _badge(scores["pi_cycle"])
             ma111 = btc.rolling(111).mean()
             ma350x2 = btc.rolling(350).mean() * 2
-            st.plotly_chart(line_chart(
+            _show(line_chart(
                 "MA111 vs 2×MA350",
                 traces=[
                     {"name": "BTC", "series": btc, "color": "#FFB300", "width": 1.2},
@@ -109,8 +132,10 @@ def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
                     {"name": "2×MA350", "series": ma350x2, "color": "#EF5350"},
                 ],
                 y_log=True,
-                height=240,
-            ), use_container_width=True)
+                y_format=",.0f",
+                y_title="Prix (USD)",
+                height=280,
+            ))
             st.caption("Indicateur historique des sommets de cycle 2013/2017/2021. "
                        "Pertinence post-ETF non garantie — à prendre avec recul.")
 
@@ -119,15 +144,17 @@ def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
         _badge(scores["ma200w"])
         weekly = btc.resample("W-SUN").last()
         ma_200w = weekly.rolling(200).mean()
-        st.plotly_chart(line_chart(
+        _show(line_chart(
             "BTC weekly vs MA200W",
             traces=[
                 {"name": "BTC (W)", "series": weekly, "color": "#FFB300"},
                 {"name": "MA200W", "series": ma_200w, "color": "#EF5350"},
             ],
             y_log=True,
-            height=280,
-        ), use_container_width=True)
+            y_format=",.0f",
+            y_title="Prix (USD)",
+            height=320,
+        ))
 
 
 # ---------------------------------------------------------------------------
@@ -144,15 +171,21 @@ def render_onchain(scores: dict[str, IndicatorScore], data: dict) -> None:
             _badge(scores["mvrv_z"])
             mvrv = data.get("mvrv_z")
             if mvrv is not None and not mvrv.empty:
-                st.plotly_chart(line_chart(
+                _show(line_chart(
                     "MVRV Z-Score",
                     traces=[{"name": "Z-Score", "series": mvrv["value"], "color": "#FFB300"}],
                     h_lines=[
                         {"y": 0, "label": "Capitulation", "color": "#1565C0"},
                         {"y": 7, "label": "Top historique", "color": "#E53935"},
                     ],
-                    height=260,
-                ), use_container_width=True)
+                    h_zones=[
+                        {"y0": 7, "y1": 20, "color": ZONE_HOT},
+                        {"y0": -5, "y1": 0, "color": ZONE_COLD},
+                    ],
+                    y_format=",.2f",
+                    y_title="Z-Score",
+                    height=300,
+                ))
 
         if "puell" in scores:
             st.markdown("**Puell Multiple** — santé des mineurs")
@@ -161,15 +194,21 @@ def render_onchain(scores: dict[str, IndicatorScore], data: dict) -> None:
             mr = data.get("miner_revenue")
             if mr is not None and not mr.empty:
                 puell = puell_multiple(mr["value"]).dropna()
-                st.plotly_chart(line_chart(
+                _show(line_chart(
                     "Puell Multiple",
                     traces=[{"name": "Puell", "series": puell, "color": "#FFB300"}],
                     h_lines=[
-                        {"y": 0.5, "label": "Capitulation", "color": "#1565C0"},
+                        {"y": 0.5, "label": "Capitulation mineurs", "color": "#1565C0"},
                         {"y": 4, "label": "Surchauffe", "color": "#E53935"},
                     ],
-                    height=260,
-                ), use_container_width=True)
+                    h_zones=[
+                        {"y0": 4, "y1": 20, "color": ZONE_HOT},
+                        {"y0": 0, "y1": 0.5, "color": ZONE_COLD},
+                    ],
+                    y_format=",.2f",
+                    y_title="Multiple",
+                    height=300,
+                ))
 
     with col_b:
         if "nupl" in scores:
@@ -180,15 +219,21 @@ def render_onchain(scores: dict[str, IndicatorScore], data: dict) -> None:
             if mc is not None and rc is not None and not mc.empty and not rc.empty:
                 from analysis.indicators import nupl
                 n = nupl(mc["value"], rc["value"]).dropna()
-                st.plotly_chart(line_chart(
+                _show(line_chart(
                     "NUPL",
                     traces=[{"name": "NUPL", "series": n, "color": "#FFB300"}],
                     h_lines=[
                         {"y": 0, "label": "Pertes / profits", "color": "#888"},
                         {"y": 0.75, "label": "Euphorie", "color": "#E53935"},
                     ],
-                    height=260,
-                ), use_container_width=True)
+                    h_zones=[
+                        {"y0": 0.75, "y1": 1, "color": ZONE_HOT},
+                        {"y0": -1, "y1": 0, "color": ZONE_COLD},
+                    ],
+                    y_format=",.3f",
+                    y_title="NUPL",
+                    height=300,
+                ))
 
         if "hash_ribbons" in scores:
             st.markdown("**Hash Ribbons** — capitulation ou expansion mineurs")
@@ -197,14 +242,16 @@ def render_onchain(scores: dict[str, IndicatorScore], data: dict) -> None:
             if hr is not None and not hr.empty:
                 ma30 = hr["value"].rolling(30).mean()
                 ma60 = hr["value"].rolling(60).mean()
-                st.plotly_chart(line_chart(
+                _show(line_chart(
                     "Hash rate MA30 vs MA60",
                     traces=[
                         {"name": "Hash MA30", "series": ma30, "color": "#4FC3F7"},
                         {"name": "Hash MA60", "series": ma60, "color": "#EF5350"},
                     ],
-                    height=260,
-                ), use_container_width=True)
+                    y_format=",.2e",
+                    y_title="Hash rate",
+                    height=300,
+                ))
 
     if "realized_price" in scores:
         st.markdown("**Realized Price** — prix d'achat moyen du marché")
@@ -212,15 +259,17 @@ def render_onchain(scores: dict[str, IndicatorScore], data: dict) -> None:
         rp = data.get("realized_price")
         btc = data["btc"]["value"]
         if rp is not None and not rp.empty:
-            st.plotly_chart(line_chart(
+            _show(line_chart(
                 "Prix vs Realized Price",
                 traces=[
                     {"name": "Prix BTC", "series": btc, "color": "#FFB300"},
                     {"name": "Realized Price", "series": rp["value"], "color": "#4FC3F7"},
                 ],
                 y_log=True,
-                height=300,
-            ), use_container_width=True)
+                y_format=",.0f",
+                y_title="USD",
+                height=320,
+            ))
 
 
 # ---------------------------------------------------------------------------
@@ -240,14 +289,16 @@ def render_macro(scores: dict[str, IndicatorScore], data: dict) -> None:
             if gold is not None and not gold.empty:
                 from analysis.indicators import btc_gold_ratio
                 bg = btc_gold_ratio(btc, gold["value"])
-                st.plotly_chart(line_chart(
+                _show(line_chart(
                     "BTC/Or",
                     traces=[
                         {"name": "Ratio", "series": bg["ratio"], "color": "#FFB300"},
                         {"name": "MA200", "series": bg["ratio_ma200"], "color": "#EF5350", "dash": "dot"},
                     ],
-                    height=280,
-                ), use_container_width=True)
+                    y_format=",.0f",
+                    y_title="Onces d'or",
+                    height=320,
+                ))
 
     with col_b:
         if "dxy" in scores:
@@ -255,11 +306,13 @@ def render_macro(scores: dict[str, IndicatorScore], data: dict) -> None:
             _badge(scores["dxy"])
             dxy = data.get("dxy")
             if dxy is not None and not dxy.empty:
-                st.plotly_chart(line_chart(
+                _show(line_chart(
                     "DXY",
                     traces=[{"name": "DXY", "series": dxy["value"], "color": "#FFB300"}],
-                    height=280,
-                ), use_container_width=True)
+                    y_format=",.2f",
+                    y_title="Indice DXY",
+                    height=320,
+                ))
 
 
 # ---------------------------------------------------------------------------
@@ -272,15 +325,21 @@ def render_sentiment(scores: dict[str, IndicatorScore], data: dict) -> None:
         _badge(scores["fear_greed"])
         fng = data.get("fear_greed")
         if fng is not None and not fng.empty:
-            st.plotly_chart(line_chart(
+            _show(line_chart(
                 "Fear & Greed Index",
                 traces=[{"name": "F&G", "series": fng["value"], "color": "#FFB300"}],
                 h_lines=[
                     {"y": 25, "label": "Peur extrême", "color": "#1565C0"},
                     {"y": 75, "label": "Avidité extrême", "color": "#E53935"},
                 ],
-                height=280,
-            ), use_container_width=True)
+                h_zones=[
+                    {"y0": 75, "y1": 100, "color": ZONE_HOT},
+                    {"y0": 0, "y1": 25, "color": ZONE_COLD},
+                ],
+                y_format=",.0f",
+                y_title="Indice F&G",
+                height=320,
+            ))
 
 
 # ---------------------------------------------------------------------------
