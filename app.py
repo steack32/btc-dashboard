@@ -95,6 +95,9 @@ def compute_scores(data: dict) -> tuple[list[sc.IndicatorScore], dict[str, sc.In
         mayer = ind.mayer_multiple(btc_price)
         scores.append(sc.score_mayer(_last_value_series(mayer)))
 
+        ath_d = ind.ath_distance(btc_price)
+        scores.append(sc.score_ath_distance(_last_value_series(ath_d)))
+
     mvrv = data.get("mvrv_z")
     if mvrv is not None and not mvrv.empty:
         scores.append(sc.score_mvrv_z(_last_value(mvrv)))

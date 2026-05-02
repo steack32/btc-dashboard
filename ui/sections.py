@@ -102,6 +102,27 @@ def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
             ))
 
     with col_b:
+        if "ath_distance" in scores:
+            st.markdown("**Distance à l'ATH** — où est BTC vs son plus haut historique")
+            _badge(scores["ath_distance"])
+            from analysis.indicators import ath_distance
+            ath_d = ath_distance(btc).dropna()
+            _show(line_chart(
+                "Ratio prix / ATH",
+                traces=[{"name": "Distance ATH", "series": ath_d, "color": PALETTE["accent"]}],
+                h_lines=[
+                    {"y": 1.0, "label": "Sur l'ATH", "color": PALETTE["danger"]},
+                    {"y": 0.5, "label": "50% sous l'ATH", "color": PALETTE["text_muted"]},
+                ],
+                h_zones=[
+                    {"y0": 0.92, "y1": 1.05, "color": ZONE_HOT},
+                    {"y0": 0, "y1": 0.6, "color": ZONE_COLD},
+                ],
+                y_format=",.2f",
+                y_title="Ratio",
+                height=280,
+            ))
+
         if "rsi_weekly" in scores:
             st.markdown("**RSI hebdomadaire (14)** — momentum long terme")
             _badge(scores["rsi_weekly"])

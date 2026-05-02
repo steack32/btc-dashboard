@@ -50,6 +50,17 @@ def mayer_multiple(price_daily: pd.Series) -> pd.Series:
     return price_daily / price_daily.rolling(200).mean()
 
 
+def ath_distance(price_daily: pd.Series) -> pd.Series:
+    """Ratio prix / plus haut historique connu jusqu'à la date.
+
+    Indicateur insensible à la volatilité absolue : à 1.0 on est sur un
+    nouvel ATH (ou exactement dessus), à 0.5 on est 50% sous l'ATH.
+    Pertinent en régime ETF où les indicateurs traditionnels (Mayer,
+    MVRV Z) restent modérés même au sommet du cycle.
+    """
+    return price_daily / price_daily.expanding().max()
+
+
 # ---------------------------------------------------------------------------
 # On-chain
 # ---------------------------------------------------------------------------

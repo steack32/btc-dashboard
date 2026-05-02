@@ -17,15 +17,15 @@ TTL_HOURS: dict[str, int] = {
 }
 
 # Pondérations du score agrégé (somme = 1.0)
-# Refonte : MVRV Z + Mayer (MA200) tirent la moitié du score, les autres
-# complètent. NUPL, MA200W, Pi Cycle, Hash Ribbons et Realized Price ont
-# été retirés (redondance mathématique avec MVRV Z et Mayer).
+# Distance à l'ATH ajoutée pour mieux capter les sommets en régime ETF
+# (où MVRV Z et Mayer restent plus modérés qu'avant).
 WEIGHTS: dict[str, float] = {
-    "mvrv_z": 0.25,
-    "mayer": 0.25,
-    "rsi_weekly": 0.15,
-    "puell": 0.15,
-    "btc_gold": 0.10,
+    "mvrv_z": 0.20,
+    "mayer": 0.20,
+    "ath_distance": 0.18,
+    "rsi_weekly": 0.13,
+    "puell": 0.12,
+    "btc_gold": 0.07,
     "dxy": 0.05,
     "fear_greed": 0.05,
 }
@@ -39,7 +39,7 @@ assert abs(sum(WEIGHTS.values()) - 1.0) < 1e-9, "Pondérations non normalisées"
 #   75-100 : prises de bénéfices à envisager
 VERDICT_BANDS: list[tuple[float, str]] = [
     (40, "Accumuler"),
-    (75, "Ne rien faire"),
+    (70, "Ne rien faire"),
     (100, "Vendre"),
 ]
 

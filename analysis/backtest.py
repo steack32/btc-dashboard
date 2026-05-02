@@ -63,6 +63,7 @@ def compute_historical_scores(data: dict, start: pd.Timestamp = BACKTEST_START) 
     # --- Calcul des indicateurs sur tout l'historique --------------------
     rsi_w_full = ind.rsi_weekly(btc)
     mayer_full = ind.mayer_multiple(btc)
+    ath_dist_full = ind.ath_distance(btc)
 
     miner_rev = data.get("miner_revenue")
     puell_full = (
@@ -102,6 +103,7 @@ def compute_historical_scores(data: dict, start: pd.Timestamp = BACKTEST_START) 
     # --- Alignement quotidien ---------------------------------------------
     rsi_w_d = _align_daily(rsi_w_full, idx)
     mayer_d = _align_daily(mayer_full, idx)
+    ath_dist_d = _align_daily(ath_dist_full, idx)
     puell_d = _align_daily(puell_full, idx)
     mvrv_z_d = _align_daily(mvrv_z_full, idx)
     bg_ratio_d = _align_daily(bg_ratio_full, idx)
@@ -113,6 +115,7 @@ def compute_historical_scores(data: dict, start: pd.Timestamp = BACKTEST_START) 
     # --- Sous-scores vectorisés ------------------------------------------
     sub_mvrv_z = sc._piecewise_vec(mvrv_z_d.values, sc.BP_MVRV_Z)
     sub_mayer = sc._piecewise_vec(mayer_d.values, sc.BP_MAYER)
+    sub_ath_dist = sc._piecewise_vec(ath_dist_d.values, sc.BP_ATH_DISTANCE)
     sub_rsi = sc._piecewise_vec(rsi_w_d.values, sc.BP_RSI_WEEKLY)
     sub_puell = sc._piecewise_vec(puell_d.values, sc.BP_PUELL)
 
@@ -127,14 +130,21 @@ def compute_historical_scores(data: dict, start: pd.Timestamp = BACKTEST_START) 
     sub_fng = fng_d.fillna(50.0).values
 
     # --- Agrégation pondérée (avec redistribution des poids manquants) ---
-    weights_keys = ["mvrv_z", "mayer", "rsi_weekly", "puell", "btc_gold", "dxy", "fear_greed"]
-    sub_arr = np.column_stack([sub_mvrv_z, sub_mayer, sub_rsi, sub_puell, sub_btc_gold, sub_dxy, sub_fng])
+    weights_keys = [
+        "mvrv_z", "mayer", "ath_distance", "rsi_weekly", "puell",
+        "btc_gold", "dxy", "fear_greed",
+    ]
+    sub_arr = np.column_stack([
+        sub_mvrv_z, sub_mayer, sub_ath_dist, sub_rsi, sub_puell,
+        sub_btc_gold, sub_dxy, sub_fng,
+    ])
     w = np.array([WEIGHTS[k] for k in weights_keys])
 
     # Mask des sous-scores valides (où la donnée brute existait vraiment)
     raw_arr = np.column_stack([
         mvrv_z_d.values,
         mayer_d.values,
+        ath_dist_d.values,
         rsi_w_d.values,
         puell_d.values,
         bg_rel.values,
@@ -159,7 +169,7 @@ def compute_historical_scores(data: dict, start: pd.Timestamp = BACKTEST_START) 
             return "—"
         if s <= 40:
             return "Accumuler"
-        if s <= 75:
+        if s <= 70:
             return "Ne rien faire"
         return "Vendre"
 
@@ -171,6 +181,7 @@ def compute_historical_scores(data: dict, start: pd.Timestamp = BACKTEST_START) 
         "palier": paliers,
         "sub_mvrv_z": sub_mvrv_z,
         "sub_mayer": sub_mayer,
+        "sub_ath_distance": sub_ath_dist,
         "sub_rsi_weekly": sub_rsi,
         "sub_puell": sub_puell,
         "sub_btc_gold": sub_btc_gold,
@@ -208,10 +219,10 @@ def extract_key_dates(history: pd.DataFrame) -> pd.DataFrame:
         # Lecture juste / fausse / nuancée
         verdict = ""
         if kd["kind"] == "top":
-            # On voulait être en "Vendre" (>75), au moins en haut de "Ne rien faire" (>60)
-            if score >= 75:
+            # On voulait être en "Vendre" (>70), au moins en haut de "Ne rien faire" (>55)
+            if score >= 70:
                 verdict = "✓ Bon signal de vente"
-            elif score >= 60:
+            elif score >= 55:
                 verdict = "~ Signal modéré"
             else:
                 verdict = "✗ Signal raté"

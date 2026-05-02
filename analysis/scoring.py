@@ -80,12 +80,16 @@ def _interp_band(score: float) -> str:
 # scalaire (live) et score vectorisé (backtest) pour rester cohérents.
 # ---------------------------------------------------------------------------
 
-BP_MVRV_Z = [(-1, 5), (0, 20), (1, 40), (2.5, 55), (4, 70), (5.5, 82), (7, 95), (10, 100)]
+# Note : MVRV Z et Mayer recalibrés pour le régime ETF post-2024,
+# où les indicateurs restent moins extrêmes même aux sommets de cycle.
+BP_MVRV_Z = [(-1, 5), (0, 18), (1, 35), (1.8, 55), (2.5, 75), (3.5, 90), (5, 100)]
 BP_PUELL = [(0.3, 5), (0.5, 18), (0.8, 38), (1.2, 55), (2.0, 72), (3.0, 88), (4.5, 100)]
-BP_MAYER = [(0.6, 5), (0.85, 25), (1.0, 45), (1.4, 60), (1.9, 75), (2.4, 88), (3.0, 100)]
+BP_MAYER = [(0.6, 5), (0.85, 22), (1.0, 40), (1.10, 60), (1.20, 78), (1.35, 92), (1.6, 100)]
 BP_RSI_WEEKLY = [(20, 5), (30, 18), (40, 35), (50, 50), (60, 65), (70, 82), (80, 95), (90, 100)]
 BP_BTC_GOLD = [(0.6, 15), (0.8, 32), (0.95, 45), (1.05, 55), (1.3, 72), (1.7, 88), (2.5, 100)]
 BP_DXY_INV = [(-8, 10), (-4, 30), (-1, 45), (1, 55), (4, 70), (8, 90)]
+# ATH-distance : ratio prix / plus haut historique. À 1.0 = au sommet absolu.
+BP_ATH_DISTANCE = [(0.4, 5), (0.6, 18), (0.75, 35), (0.85, 55), (0.92, 75), (0.97, 90), (1.0, 100)]
 
 
 # ---------------------------------------------------------------------------
@@ -110,6 +114,20 @@ def score_mayer(m: float) -> IndicatorScore:
 def score_rsi_weekly(r: float) -> IndicatorScore:
     s = _piecewise(r, BP_RSI_WEEKLY)
     return IndicatorScore("rsi_weekly", "RSI hebdomadaire", r, s, WEIGHTS["rsi_weekly"], _interp_band(s))
+
+
+def score_ath_distance(ratio: float) -> IndicatorScore:
+    """Distance à l'ATH historique. À 1.0 = nouvel ATH."""
+    s = _piecewise(ratio, BP_ATH_DISTANCE)
+    pct = ratio * 100 if not np.isnan(ratio) else float("nan")
+    note = (
+        f"Prix à {pct:.1f}% de l'ATH historique" if not np.isnan(pct)
+        else "—"
+    )
+    return IndicatorScore(
+        "ath_distance", "Distance à l'ATH", ratio, s, WEIGHTS["ath_distance"],
+        _interp_band(s), note=note,
+    )
 
 
 def score_btc_gold(ratio: float, ratio_ma200: float) -> IndicatorScore:
