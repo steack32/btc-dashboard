@@ -14,6 +14,14 @@ from config import VERDICT_BANDS, WEIGHTS
 
 
 @dataclass
+class Verdict:
+    """Avis tranché en trois morceaux affichables séparément."""
+    intro: str           # "BTC est dans une zone d'accumulation"
+    conclu: str          # "Historiquement, ce type..."
+    drivers: str = ""    # "Tiré vers le bas par : ..."
+
+
+@dataclass
 class IndicatorScore:
     name: str
     label: str           # libellé affiché (français)
@@ -125,15 +133,15 @@ def _band(score: float) -> str:
     return VERDICT_BANDS[-1][1]
 
 
-def generate_verdict(scores: list[IndicatorScore], aggregate_score: float, palier: str) -> str:
-    """Avis tranché en 1-2 phrases. Règles fondées sur les indicateurs extrêmes.
+def generate_verdict(scores: list[IndicatorScore], aggregate_score: float, palier: str) -> Verdict:
+    """Avis tranché en trois morceaux : intro courte, conclusion, drivers.
 
-    On regarde lesquels poussent le plus vers le haut ou le bas pour
-    construire une justification, plutôt que d'énoncer un palier abstrait.
+    On retourne un dataclass plutôt qu'une string formattée — comme ça
+    l'UI peut afficher chaque partie indépendamment, sans parsing fragile.
     """
     valid = [s for s in scores if not np.isnan(s.sub_score)]
     if not valid:
-        return "Données insuffisantes pour trancher."
+        return Verdict(intro="Données insuffisantes pour trancher", conclu="")
 
     extrêmes_haut = sorted([s for s in valid if s.sub_score >= 75], key=lambda s: -s.sub_score)[:3]
     extrêmes_bas = sorted([s for s in valid if s.sub_score <= 25], key=lambda s: s.sub_score)[:3]
@@ -150,12 +158,13 @@ def generate_verdict(scores: list[IndicatorScore], aggregate_score: float, palie
         "Vendre": "Prudence. Historiquement, ce type de lecture a précédé les sommets de cycle de quelques semaines à quelques mois. C'est le moment d'envisager des prises de bénéfices partielles, pas de tout vendre d'un coup.",
     }.get(palier, "")
 
-    drivers = ""
+    parts: list[str] = []
     if extrêmes_haut:
         noms = ", ".join(s.label for s in extrêmes_haut[:2])
-        drivers += f" Le score est tiré vers le haut par : {noms}."
+        parts.append(f"Tiré vers le haut par : {noms}")
     if extrêmes_bas:
         noms = ", ".join(s.label for s in extrêmes_bas[:2])
-        drivers += f" Tiré vers le bas par : {noms}."
+        parts.append(f"Tiré vers le bas par : {noms}")
+    drivers = " · ".join(parts)
 
-    return f"{intro} (score {aggregate_score:.0f}/100).{drivers} {conclu}"
+    return Verdict(intro=intro, conclu=conclu, drivers=drivers)

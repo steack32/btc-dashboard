@@ -5,6 +5,7 @@ import math
 
 import streamlit as st
 
+from analysis.scoring import Verdict
 from config import PALETTE, VERDICT_COLORS
 from ui.charts import GAUGE_CONFIG, gauge
 
@@ -46,7 +47,7 @@ def _kpi(col, label: str, value: str, delta: str | None = None, delta_color: str
 def render_header(
     score: float,
     palier: str,
-    verdict: str,
+    verdict: Verdict,
     days_since_halving: int,
     days_until_next: int | None,
     kpis: list[dict] | None = None,
@@ -57,22 +58,22 @@ def render_header(
     """
     color = VERDICT_COLORS.get(palier, PALETTE["text_muted"])
 
-    # Titre — ₿ en orange Bitcoin officiel comme signature visuelle
-    st.markdown(
-        f"""
-        <div style='margin-bottom:1.5rem;'>
-            <h1 style='margin:0; font-weight:700; letter-spacing:-0.025em;'>
-                <span class='btc-logo'>₿</span>Bitcoin
-                <span style='color:{PALETTE['text_muted']}; font-weight:500; margin:0 0.4rem;'>·</span>
-                <span style='color:{PALETTE['text_muted']}; font-weight:500;'>Lecture moyen-long terme</span>
-            </h1>
-            <p style='color:{PALETTE['text_muted']}; font-size:0.95rem; margin:0.3rem 0 0 0;'>
-                Score multi-indicateurs et verdict actionnable, sans analyse à court terme.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    # Titre — ₿ en orange Bitcoin officiel comme signature visuelle.
+    # HTML compact (sans indentations) pour éviter que Streamlit
+    # interprète les indentations comme du code block markdown.
+    title_html = (
+        f"<div style='margin-bottom:1.5rem;'>"
+        f"<h1 style='margin:0; font-weight:700; letter-spacing:-0.025em;'>"
+        f"<span class='btc-logo'>₿</span>Bitcoin"
+        f"<span style='color:{PALETTE['text_muted']}; font-weight:500; margin:0 0.4rem;'>·</span>"
+        f"<span style='color:{PALETTE['text_muted']}; font-weight:500;'>Lecture moyen-long terme</span>"
+        f"</h1>"
+        f"<p style='color:{PALETTE['text_muted']}; font-size:0.95rem; margin:0.3rem 0 0 0;'>"
+        f"Score multi-indicateurs et verdict actionnable, sans analyse à court terme."
+        f"</p>"
+        f"</div>"
     )
+    st.markdown(title_html, unsafe_allow_html=True)
 
     # Hero principal : compteur + verdict
     col_gauge, col_verdict = st.columns([1, 1.4], gap="large")
@@ -81,37 +82,19 @@ def render_header(
         st.plotly_chart(gauge(score, color), use_container_width=True, config=GAUGE_CONFIG)
 
     with col_verdict:
-        # Avis tranché et drivers
-        intro_part, _, rest = verdict.partition(".")
-        body = (rest or "").strip()
-        if body.startswith("Le score") or body.startswith(" Le score") or body.startswith("Tiré"):
-            # On extrait la phrase de drivers pour l'afficher séparément
-            drivers_idx = max(body.find("Le score est tiré"), body.find("Tiré vers"))
-            if drivers_idx >= 0:
-                conclu = body[:drivers_idx].strip()
-                drivers = body[drivers_idx:].strip()
-            else:
-                conclu = body
-                drivers = ""
-        else:
-            conclu = body
-            drivers = ""
-
-        st.markdown(
-            f"""
-            <div style='padding-top:1rem;'>
-                <span class='verdict-badge' style='color:{color};'>{palier}</span>
-                <div class='verdict-title' style='color:{color};'>
-                    {intro_part.strip()}
-                </div>
-                <div class='verdict-text'>
-                    {conclu}
-                </div>
-                {f"<div class='verdict-drivers'>{drivers}</div>" if drivers else ""}
-            </div>
-            """,
-            unsafe_allow_html=True,
+        drivers_html = (
+            f"<div class='verdict-drivers'>{verdict.drivers}</div>"
+            if verdict.drivers else ""
         )
+        verdict_html = (
+            f"<div style='padding-top:1rem;'>"
+            f"<span class='verdict-badge' style='color:{color};'>{palier}</span>"
+            f"<div class='verdict-title' style='color:{color};'>{verdict.intro}</div>"
+            f"<div class='verdict-text'>{verdict.conclu}</div>"
+            f"{drivers_html}"
+            f"</div>"
+        )
+        st.markdown(verdict_html, unsafe_allow_html=True)
 
     # KPIs en grille
     if kpis:
