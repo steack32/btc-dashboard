@@ -24,12 +24,10 @@ def apply_theme() -> None:
 
         .stApp {{
             background: {PALETTE['bg']};
-            position: relative;
         }}
 
-        /* Bandeau orange Bitcoin en haut, signature visuelle discrète */
-        .stApp::before {{
-            content: '';
+        /* Bandeau orange Bitcoin en haut (div injectée séparément, pas un pseudo-élément) */
+        #btc-top-bar {{
             position: fixed;
             top: 0;
             left: 0;
@@ -45,10 +43,16 @@ def apply_theme() -> None:
             pointer-events: none;
         }}
 
-        /* On masque le chrome Streamlit (menu, footer, deploy badge) */
-        #MainMenu, footer, header, [data-testid="stToolbar"], [data-testid="stDeployButton"] {{
-            visibility: hidden;
-            height: 0;
+        /* On masque le chrome Streamlit (menu, footer, deploy badge).
+           Sélecteurs ciblés pour éviter de cacher des <header> du contenu. */
+        #MainMenu,
+        footer,
+        [data-testid="stHeader"],
+        [data-testid="stToolbar"],
+        [data-testid="stDeployButton"],
+        [data-testid="stStatusWidget"] {{
+            visibility: hidden !important;
+            height: 0 !important;
         }}
 
         /* Padding du conteneur principal */
@@ -267,5 +271,6 @@ def apply_theme() -> None:
             border-top: 1px solid {PALETTE['border']};
         }}
     </style>
+    <div id="btc-top-bar"></div>
     """
     st.markdown(css, unsafe_allow_html=True)
