@@ -292,7 +292,7 @@ def main() -> None:
             capital_start=10000.0,
             buy_pct_low=0.01,
             buy_pct_mid=0.005,
-            sell_pct_high=0.02,
+            sell_pct_high=0.005,
         )
 
     # Pied de page minimaliste — le timestamp et les sources sont déjà
