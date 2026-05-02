@@ -36,14 +36,14 @@ def apply_theme() -> None:
             background-attachment: fixed;
         }}
 
-        /* Pattern de grille très subtil par-dessus */
+        /* Pattern de grille subtil par-dessus */
         .stApp::after {{
             content: '';
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background-image:
-                linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+                linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
             background-size: 48px 48px;
             pointer-events: none;
             z-index: 0;
@@ -62,17 +62,19 @@ def apply_theme() -> None:
             > [data-testid="stVerticalBlock"]
             > [data-testid="stHorizontalBlock"]:first-of-type {{
             background:
-                radial-gradient(ellipse 80% 100% at 0% 50%,
-                    rgba(247, 147, 26, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 90% 110% at 0% 50%,
+                    rgba(247, 147, 26, 0.13) 0%, transparent 65%),
                 linear-gradient(135deg,
                     {PALETTE['surface']} 0%,
                     {PALETTE['surface_alt']} 100%);
-            border: 1px solid {PALETTE['border']};
+            border: 1px solid {PALETTE['border_strong']};
             border-radius: 16px;
-            padding: 1.4rem 1.8rem;
-            margin-bottom: 1.2rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3),
-                        inset 0 1px 0 rgba(247, 147, 26, 0.08);
+            padding: 1.6rem 2rem;
+            margin-bottom: 1rem;
+            box-shadow:
+                0 4px 16px rgba(0, 0, 0, 0.4),
+                0 0 24px rgba(247, 147, 26, 0.06),
+                inset 0 1px 0 rgba(247, 147, 26, 0.12);
             position: relative;
             overflow: hidden;
         }}
@@ -85,11 +87,90 @@ def apply_theme() -> None:
             content: '';
             position: absolute;
             top: 0; left: 0;
-            width: 35%;
-            height: 1px;
+            width: 40%;
+            height: 2px;
             background: linear-gradient(90deg,
                 {PALETTE['accent']} 0%,
                 transparent 100%);
+        }}
+
+        /* Bandeau meta : timestamp + sources, juste sous le hero */
+        .dashboard-meta {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.55rem 1rem;
+            background: rgba(22, 24, 28, 0.4);
+            border: 1px solid {PALETTE['border']};
+            border-radius: 10px;
+            font-size: 0.82rem;
+            color: {PALETTE['text_muted']};
+            margin-bottom: 0.5rem;
+            flex-wrap: wrap;
+        }}
+        .dashboard-meta .live-dot {{
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: {PALETTE['accent']};
+            margin-right: 0.45rem;
+            box-shadow: 0 0 0 0 rgba(247, 147, 26, 0.6);
+            animation: live-pulse 2.4s infinite;
+            vertical-align: middle;
+        }}
+        @keyframes live-pulse {{
+            0% {{ box-shadow: 0 0 0 0 rgba(247, 147, 26, 0.55); }}
+            70% {{ box-shadow: 0 0 0 7px rgba(247, 147, 26, 0); }}
+            100% {{ box-shadow: 0 0 0 0 rgba(247, 147, 26, 0); }}
+        }}
+        .dashboard-meta b {{
+            color: {PALETTE['text']};
+            font-weight: 600;
+        }}
+        .dashboard-meta .meta-sources span {{
+            color: {PALETTE['text_dim']};
+        }}
+
+        /* Navigation sticky par sections */
+        .dashboard-nav {{
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            gap: 0.4rem;
+            padding: 0.6rem;
+            margin: 0 -0.5rem 1.5rem -0.5rem;
+            background: rgba(14, 15, 17, 0.85);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid {PALETTE['border']};
+            border-radius: 14px;
+            flex-wrap: wrap;
+        }}
+        .dashboard-nav a {{
+            color: {PALETTE['text_muted']};
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 500;
+            padding: 0.35rem 0.9rem;
+            border-radius: 8px;
+            transition: color 0.2s, background 0.2s;
+            border: 1px solid transparent;
+        }}
+        .dashboard-nav a:hover {{
+            color: {PALETTE['accent']};
+            background: rgba(247, 147, 26, 0.07);
+            border-color: rgba(247, 147, 26, 0.22);
+        }}
+
+        /* Ancres de sections : scroll-margin pour compenser la nav sticky */
+        .section-anchor {{
+            display: block;
+            height: 0;
+            scroll-margin-top: 80px;
         }}
 
         /* Bandeau orange Bitcoin en haut (div injectée séparément, pas un pseudo-élément) */

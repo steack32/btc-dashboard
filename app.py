@@ -4,8 +4,6 @@ Lance avec : streamlit run app.py
 """
 from __future__ import annotations
 
-from datetime import datetime
-
 import pandas as pd
 import streamlit as st
 
@@ -15,7 +13,7 @@ from analysis import scoring as sc
 from config import PALETTE
 from data import sources as ds
 from ui.backtest import render_backtest, render_strategy_simulation
-from ui.header import render_header
+from ui.header import render_header, render_meta_bar
 from ui.sections import (
     render_technique,
     render_onchain,
@@ -244,27 +242,48 @@ def main() -> None:
 
     render_header(agg, palier, verdict, days_post, days_next, kpis=kpis)
 
+    # Bandeau meta : timestamp + sources, juste sous le hero
+    render_meta_bar()
+
+    # Navigation sticky vers les sections (sections définies par les ancres ci-dessous)
+    st.markdown(
+        "<nav class='dashboard-nav'>"
+        "<a href='#technique'>Technique</a>"
+        "<a href='#on-chain'>On-chain</a>"
+        "<a href='#macro'>Macro</a>"
+        "<a href='#sentiment'>Sentiment</a>"
+        "<a href='#recap'>Récap</a>"
+        "<a href='#backtest'>Backtest</a>"
+        "<a href='#strategie'>Stratégie</a>"
+        "</nav>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("<div id='technique' class='section-anchor'></div>", unsafe_allow_html=True)
     render_technique(scores, data)
+    st.markdown("<div id='on-chain' class='section-anchor'></div>", unsafe_allow_html=True)
     render_onchain(scores, data)
+    st.markdown("<div id='macro' class='section-anchor'></div>", unsafe_allow_html=True)
     render_macro(scores, data)
+    st.markdown("<div id='sentiment' class='section-anchor'></div>", unsafe_allow_html=True)
     render_sentiment(scores, data)
+    st.markdown("<div id='recap' class='section-anchor'></div>", unsafe_allow_html=True)
     render_summary_table(scores_list)
 
     # Backtest historique : calcul vectorisé rapide (<200ms sur 8 ans).
-    # Le cache de load_all_data() évite déjà les appels API en double.
     history = bt.compute_historical_scores(data)
+    st.markdown("<div id='backtest' class='section-anchor'></div>", unsafe_allow_html=True)
     render_backtest(history)
+    st.markdown("<div id='strategie' class='section-anchor'></div>", unsafe_allow_html=True)
     render_strategy_simulation(history, buy_low=10.0, buy_mid=5.0, sell_high=20.0)
 
-    # Pied de page
+    # Pied de page minimaliste — le timestamp et les sources sont déjà
+    # dans le bandeau meta en haut, on ne les répète pas ici.
     st.markdown(
-        f"""
-        <div class='dashboard-footer'>
-            Dernière mise à jour : {datetime.now().strftime('%d %b %Y, %H:%M')}
-            · Sources : yfinance, blockchain.com, CoinMetrics, bitcoin-data.com, alternative.me
-            · Ce dashboard est un outil d'aide à la lecture, pas un conseil en investissement.
-        </div>
-        """,
+        "<div class='dashboard-footer'>"
+        "Outil d'aide à la lecture, pas un conseil en investissement. "
+        "Toutes les données proviennent d'API publiques gratuites."
+        "</div>",
         unsafe_allow_html=True,
     )
 

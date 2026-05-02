@@ -2,12 +2,33 @@
 from __future__ import annotations
 
 import math
+from datetime import datetime
 
 import streamlit as st
 
 from analysis.scoring import Verdict
 from config import PALETTE, VERDICT_COLORS
 from ui.charts import GAUGE_CONFIG, gauge
+
+
+def render_meta_bar() -> None:
+    """Petit bandeau sous le hero avec timestamp et sources de données."""
+    now = datetime.now().strftime("%d %b %Y · %H:%M")
+    sources_html = (
+        "<span>yfinance</span> · "
+        "<span>CoinMetrics</span> · "
+        "<span>blockchain.com</span> · "
+        "<span>bitcoin-data.com</span> · "
+        "<span>alternative.me</span>"
+    )
+    st.markdown(
+        f"<div class='dashboard-meta'>"
+        f"<div><span class='live-dot'></span>"
+        f"<b>Données à jour</b> · {now}</div>"
+        f"<div class='meta-sources'>Sources : {sources_html}</div>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def _fmt_compact(value: float, prefix: str = "", suffix: str = "", decimals: int = 0) -> str:
