@@ -260,22 +260,34 @@ def main() -> None:
     )
 
     st.markdown("<div id='technique' class='section-anchor'></div>", unsafe_allow_html=True)
-    render_technique(scores, data)
+    with st.container(border=True):
+        render_technique(scores, data)
+
     st.markdown("<div id='on-chain' class='section-anchor'></div>", unsafe_allow_html=True)
-    render_onchain(scores, data)
+    with st.container(border=True):
+        render_onchain(scores, data)
+
     st.markdown("<div id='macro' class='section-anchor'></div>", unsafe_allow_html=True)
-    render_macro(scores, data)
+    with st.container(border=True):
+        render_macro(scores, data)
+
     st.markdown("<div id='sentiment' class='section-anchor'></div>", unsafe_allow_html=True)
-    render_sentiment(scores, data)
+    with st.container(border=True):
+        render_sentiment(scores, data)
+
     st.markdown("<div id='recap' class='section-anchor'></div>", unsafe_allow_html=True)
-    render_summary_table(scores_list)
+    with st.container(border=True):
+        render_summary_table(scores_list)
 
     # Backtest historique : calcul vectorisé rapide (<200ms sur 8 ans).
     history = bt.compute_historical_scores(data)
     st.markdown("<div id='backtest' class='section-anchor'></div>", unsafe_allow_html=True)
-    render_backtest(history)
+    with st.container(border=True):
+        render_backtest(history)
+
     st.markdown("<div id='strategie' class='section-anchor'></div>", unsafe_allow_html=True)
-    render_strategy_simulation(history, buy_low=10.0, buy_mid=5.0, sell_high=20.0)
+    with st.container(border=True):
+        render_strategy_simulation(history, buy_low=10.0, buy_mid=5.0, sell_high=20.0)
 
     # Pied de page minimaliste — le timestamp et les sources sont déjà
     # dans le bandeau meta en haut, on ne les répète pas ici.

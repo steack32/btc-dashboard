@@ -133,44 +133,62 @@ def apply_theme() -> None:
             color: {PALETTE['text_dim']};
         }}
 
-        /* Navigation sticky par sections */
+        /* Navigation flottante par sections.
+           position:sticky cassé par les overflow des wrappers Streamlit -> fixed. */
         .dashboard-nav {{
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            position: fixed;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
             display: flex;
             justify-content: center;
-            gap: 0.4rem;
-            padding: 0.6rem;
-            margin: 0 -0.5rem 1.5rem -0.5rem;
-            background: rgba(14, 15, 17, 0.85);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            border: 1px solid {PALETTE['border']};
-            border-radius: 14px;
+            gap: 0.3rem;
+            padding: 0.4rem 0.5rem;
+            background: rgba(14, 15, 17, 0.88);
+            backdrop-filter: blur(16px) saturate(150%);
+            -webkit-backdrop-filter: blur(16px) saturate(150%);
+            border: 1px solid {PALETTE['border_strong']};
+            border-radius: 100px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4),
+                        0 0 0 1px rgba(247, 147, 26, 0.05);
             flex-wrap: wrap;
+            max-width: calc(100% - 24px);
         }}
         .dashboard-nav a {{
             color: {PALETTE['text_muted']};
             text-decoration: none;
-            font-size: 0.88rem;
+            font-size: 0.82rem;
             font-weight: 500;
-            padding: 0.35rem 0.9rem;
-            border-radius: 8px;
+            padding: 0.3rem 0.85rem;
+            border-radius: 100px;
             transition: color 0.2s, background 0.2s;
-            border: 1px solid transparent;
         }}
         .dashboard-nav a:hover {{
             color: {PALETTE['accent']};
-            background: rgba(247, 147, 26, 0.07);
-            border-color: rgba(247, 147, 26, 0.22);
+            background: rgba(247, 147, 26, 0.1);
         }}
 
-        /* Ancres de sections : scroll-margin pour compenser la nav sticky */
+        /* Compense la nav fixed : on pousse le contenu vers le bas
+           pour qu'elle ne masque pas le titre. */
+        [data-testid="stMainBlockContainer"] {{
+            padding-top: 4rem !important;
+        }}
+
+        /* Ancres de sections : scroll-margin pour compenser la nav fixed */
         .section-anchor {{
             display: block;
             height: 0;
             scroll-margin-top: 80px;
+        }}
+
+        /* Cards subtiles autour des sections (st.container(border=True)) */
+        [data-testid="stVerticalBlockBorderWrapper"]:has(> div > [data-testid="stHeading"]) {{
+            background: rgba(22, 24, 28, 0.4) !important;
+            border: 1px solid {PALETTE['border']} !important;
+            border-radius: 14px !important;
+            padding: 1.2rem 1.5rem !important;
+            margin-bottom: 1rem !important;
         }}
 
         /* Bandeau orange Bitcoin en haut (div injectée séparément, pas un pseudo-élément) */

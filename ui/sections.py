@@ -54,10 +54,7 @@ def _show(fig) -> None:
 def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
     st.subheader("Technique")
     st.caption(
-        "Glisser-déposer pour faire défiler la timeline · molette pour zoomer · "
-        "boutons 1M/6M/1A/3A/Tout pour sauter à une période · barre du bas pour scrubber · "
-        "outils de dessin dans la barre d'outils pour tracer tes propres lignes de tendance · "
-        "double-clic pour réinitialiser."
+        "Drag pour pan · molette pour zoomer · boutons 1M/6M/1A/3A/Tout · double-clic pour reset"
     )
 
     btc = data["btc"]["value"]
