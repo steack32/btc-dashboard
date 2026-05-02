@@ -54,7 +54,12 @@ def _show(fig) -> None:
 
 def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
     st.subheader("Technique")
-    st.caption("Astuce : utilise les boutons 1M/6M/1A/3A/Tout, ou sélectionne une zone à la souris pour zoomer. Double-clic pour réinitialiser.")
+    st.caption(
+        "Glisser-déposer pour faire défiler la timeline · molette pour zoomer · "
+        "boutons 1M/6M/1A/3A/Tout pour sauter à une période · barre du bas pour scrubber · "
+        "outils de dessin dans la barre d'outils pour tracer tes propres lignes de tendance · "
+        "double-clic pour réinitialiser."
+    )
 
     btc = data["btc"]["value"]
     ma50 = btc.rolling(50).mean()
@@ -74,7 +79,7 @@ def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
             y_log=True,
             y_format=",.0f",
             y_title="Prix (USD)",
-            height=380,
+            height=460,
         ))
 
         if "mayer" in scores:
@@ -94,7 +99,7 @@ def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
                 ],
                 y_format=",.2f",
                 y_title="Multiple",
-                height=280,
+                height=340,
             ))
 
     with col_b:
@@ -116,7 +121,7 @@ def render_technique(scores: dict[str, IndicatorScore], data: dict) -> None:
                 ],
                 y_format=",.1f",
                 y_title="RSI",
-                height=280,
+                height=340,
             ))
 
 
@@ -148,7 +153,7 @@ def render_onchain(scores: dict[str, IndicatorScore], data: dict) -> None:
                     ],
                     y_format=",.2f",
                     y_title="Z-Score",
-                    height=300,
+                    height=360,
                 ))
 
         if "puell" in scores:
@@ -171,7 +176,7 @@ def render_onchain(scores: dict[str, IndicatorScore], data: dict) -> None:
                     ],
                     y_format=",.2f",
                     y_title="Multiple",
-                    height=300,
+                    height=360,
                 ))
 
 
@@ -201,7 +206,7 @@ def render_macro(scores: dict[str, IndicatorScore], data: dict) -> None:
                     ],
                     y_format=",.0f",
                     y_title="Onces d'or",
-                    height=320,
+                    height=380,
                 ))
 
     with col_b:
@@ -215,7 +220,7 @@ def render_macro(scores: dict[str, IndicatorScore], data: dict) -> None:
                     traces=[{"name": "DXY", "series": dxy["value"], "color": "#FFB300"}],
                     y_format=",.2f",
                     y_title="Indice DXY",
-                    height=320,
+                    height=380,
                 ))
 
 

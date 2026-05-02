@@ -1,11 +1,15 @@
 """Helpers Plotly factorisés pour le dashboard.
 
-Toutes les courbes ont par défaut :
-  - boutons de période (1M, 6M, 1A, 3A, Max) en haut à gauche
-  - tooltip unifié au survol (toutes les valeurs à la même date)
-  - zoom à la souris (drag pour sélectionner une zone, double-clic pour reset)
-  - molette pour zoomer (scroll zoom)
-  - barre d'outils visible (export PNG, reset, pan, zoom)
+UX inspirée de TradingView :
+  - Pan à la souris par défaut (drag pour faire défiler la timeline)
+  - Scroll molette = zoom centré sur la position du curseur
+  - Crosshair (réticule) qui suit la souris avec valeurs sur les axes
+  - Range slider compact en bas pour scrubber rapidement dans l'historique
+  - Boutons de période (1M, 6M, 1A, 3A, Tout) au-dessus
+  - Outils de dessin (lignes de tendance, formes) dans la barre d'outils
+  - Zoom préservé entre les rerenders Streamlit grâce à uirevision
+  - Format de date qui s'adapte selon le niveau de zoom
+  - Bouton plein écran sur chaque graph
 """
 from __future__ import annotations
 
@@ -13,31 +17,72 @@ import pandas as pd
 import plotly.graph_objects as go
 
 
-# Configuration passée à st.plotly_chart pour activer zoom molette + barre d'outils
+# Configuration passée à st.plotly_chart pour activer molette + barre d'outils complète
 CHART_CONFIG = {
     "displaylogo": False,
     "displayModeBar": True,
-    "modeBarButtonsToRemove": ["lasso2d", "select2d", "autoScale2d"],
-    "toImageButtonOptions": {"format": "png", "filename": "btc-dashboard", "scale": 2},
+    "modeBarButtonsToAdd": [
+        "drawline",       # tracer des lignes de tendance
+        "drawopenpath",   # tracer des courbes libres
+        "drawrect",       # encadrer une zone
+        "eraseshape",     # effacer les formes dessinées
+    ],
+    "modeBarButtonsToRemove": ["lasso2d", "select2d"],
+    "toImageButtonOptions": {
+        "format": "png",
+        "filename": "btc-dashboard",
+        "scale": 2,
+        "width": 1600,
+        "height": 800,
+    },
     "scrollZoom": True,
     "doubleClick": "reset",
-    "locale": "fr",
+    "showAxisDragHandles": True,
+    "showAxisRangeEntryBoxes": True,
+    "responsive": True,
 }
 
 GAUGE_CONFIG = {"displayModeBar": False, "staticPlot": True}
 
 
-def _base_layout(title: str, height: int = 320, with_rangeselector: bool = True) -> dict:
+# Format de date adaptatif : selon le niveau de zoom, on affiche jour/semaine/mois/année
+_TICKFORMAT_STOPS = [
+    dict(dtickrange=[None, 86400000], value="%H:%M"),                 # < 1 jour
+    dict(dtickrange=[86400000, 604800000], value="%d %b"),            # < 1 semaine
+    dict(dtickrange=[604800000, 2592000000], value="%d %b %Y"),       # < 1 mois
+    dict(dtickrange=[2592000000, 31536000000], value="%b %Y"),        # < 1 an
+    dict(dtickrange=[31536000000, None], value="%Y"),                 # > 1 an
+]
+
+
+def _base_layout(
+    title: str,
+    height: int = 320,
+    with_rangeselector: bool = True,
+    with_rangeslider: bool = True,
+    uikey: str = "default",
+) -> dict:
     xaxis: dict = dict(
-        gridcolor="#2A2A2A",
+        gridcolor="#222",
         showgrid=True,
         zeroline=False,
         showspikes=True,
         spikemode="across",
-        spikethickness=1,
-        spikecolor="#777",
-        spikedash="dot",
-        rangeslider=dict(visible=False),
+        spikethickness=1.2,
+        spikecolor="#FFB300",
+        spikedash="solid",
+        spikesnap="cursor",
+        showline=True,
+        linecolor="#444",
+        tickformatstops=_TICKFORMAT_STOPS,
+        rangeslider=dict(
+            visible=with_rangeslider,
+            thickness=0.05,
+            bgcolor="#0F0F0F",
+            bordercolor="#333",
+            borderwidth=1,
+        ),
+        type="date",
     )
     if with_rangeselector:
         xaxis["rangeselector"] = dict(
@@ -48,29 +93,65 @@ def _base_layout(title: str, height: int = 320, with_rangeselector: bool = True)
                 dict(count=3, label="3A", step="year", stepmode="backward"),
                 dict(step="all", label="Tout"),
             ],
-            bgcolor="#1E1E1E",
+            bgcolor="#1A1A1A",
             activecolor="#FFB300",
             font=dict(color="#E0E0E0", size=11),
             x=0,
-            y=1.10,
+            y=1.12,
             xanchor="left",
             yanchor="top",
         )
+
+    yaxis = dict(
+        gridcolor="#222",
+        showgrid=True,
+        zeroline=False,
+        showspikes=True,
+        spikemode="across",
+        spikethickness=1.2,
+        spikecolor="#FFB300",
+        spikedash="solid",
+        spikesnap="cursor",
+        showline=True,
+        linecolor="#444",
+        side="right",
+        autorange=True,
+        fixedrange=False,
+    )
+
     return dict(
-        title=dict(text=title, font=dict(size=14, color="#E0E0E0"), x=0.0),
+        title=dict(text=title, font=dict(size=14, color="#E0E0E0"), x=0.0, y=0.97),
         height=height,
-        margin=dict(l=10, r=10, t=70 if with_rangeselector else 40, b=10),
+        margin=dict(l=10, r=60, t=70 if with_rangeselector else 40, b=10),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#E0E0E0"),
+        font=dict(color="#E0E0E0", family="Inter, system-ui, sans-serif"),
         xaxis=xaxis,
-        yaxis=dict(gridcolor="#2A2A2A", showgrid=True, zeroline=False, fixedrange=False),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0.5, xanchor="center",
-                    bgcolor="rgba(0,0,0,0)"),
+        yaxis=yaxis,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.04,
+            x=1,
+            xanchor="right",
+            bgcolor="rgba(0,0,0,0)",
+            font=dict(size=11),
+        ),
         hovermode="x unified",
-        hoverlabel=dict(bgcolor="#1A1A1A", bordercolor="#444",
-                        font=dict(color="#E0E0E0", size=12)),
-        dragmode="zoom",
+        hoverlabel=dict(
+            bgcolor="rgba(15,15,15,0.95)",
+            bordercolor="#444",
+            font=dict(color="#E0E0E0", size=12, family="Inter, system-ui, sans-serif"),
+        ),
+        dragmode="pan",         # pan par défaut, comme TradingView
+        uirevision=uikey,       # préserve zoom/pan entre rerenders Streamlit
+        newshape=dict(line=dict(color="#FFB300", width=2)),
+        modebar=dict(
+            bgcolor="rgba(0,0,0,0)",
+            color="#777",
+            activecolor="#FFB300",
+            orientation="v",
+        ),
     )
 
 
@@ -80,16 +161,19 @@ def line_chart(
     y_log: bool = False,
     h_lines: list[dict] | None = None,
     h_zones: list[dict] | None = None,
-    height: int = 320,
+    height: int = 360,
     rangeselector: bool = True,
+    rangeslider: bool = True,
     y_format: str = ",.2f",
     y_title: str | None = None,
+    uikey: str | None = None,
 ) -> go.Figure:
-    """Graphique linéaire enrichi.
+    """Graphique linéaire avec UX type TradingView.
 
     traces  : [{"name": str, "series": pd.Series, "color": str?, "dash": str?, "width": float?}]
     h_lines : [{"y": float, "label": str, "color": str?, "dash": str?}]
-    h_zones : [{"y0": float, "y1": float, "color": str?}] — bandes colorées en arrière-plan
+    h_zones : [{"y0": float, "y1": float, "color": str?}] — bandes de fond
+    uikey   : identifiant stable pour préserver le zoom (défaut = title)
     """
     fig = go.Figure()
     for t in traces:
@@ -105,18 +189,26 @@ def line_chart(
                 color=t.get("color", "#FFB300"),
                 width=t.get("width", 1.8),
                 dash=t.get("dash", "solid"),
+                shape="linear",
             ),
-            hovertemplate=f"<b>{t['name']}</b> : %{{y:{y_format}}}<extra></extra>",
+            hovertemplate=f"<b>{t['name']}</b> %{{y:{y_format}}}<extra></extra>",
+            connectgaps=False,
         ))
 
-    layout = _base_layout(title, height=height, with_rangeselector=rangeselector)
+    layout = _base_layout(
+        title,
+        height=height,
+        with_rangeselector=rangeselector,
+        with_rangeslider=rangeslider,
+        uikey=uikey or title,
+    )
     if y_log:
         layout["yaxis"]["type"] = "log"
     if y_title:
-        layout["yaxis"]["title"] = dict(text=y_title, font=dict(size=11, color="#999"))
+        layout["yaxis"]["title"] = dict(text=y_title, font=dict(size=11, color="#888"))
     fig.update_layout(**layout)
 
-    # Zones colorées en arrière-plan (zones critiques)
+    # Bandes critiques en arrière-plan
     for z in h_zones or []:
         fig.add_hrect(
             y0=z["y0"],
@@ -152,12 +244,15 @@ def gauge(score: float, color: str) -> go.Figure:
             "bgcolor": "rgba(0,0,0,0)",
             "borderwidth": 0,
             "steps": [
-                {"range": [0, 20], "color": "#0D2B4A"},
-                {"range": [20, 40], "color": "#37474F"},
-                {"range": [40, 60], "color": "#424242"},
-                {"range": [60, 80], "color": "#1B5E20"},
-                {"range": [80, 100], "color": "#7F1D1D"},
+                {"range": [0, 40], "color": "#1B5E20"},
+                {"range": [40, 75], "color": "#5D4037"},
+                {"range": [75, 100], "color": "#7F1D1D"},
             ],
+            "threshold": {
+                "line": {"color": "#FFFFFF", "width": 3},
+                "thickness": 0.75,
+                "value": score,
+            },
         },
     ))
     fig.update_layout(
