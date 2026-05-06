@@ -76,6 +76,19 @@ def _pct_change(s: pd.Series, days: int) -> float:
     return (float(last) / float(ref) - 1) * 100
 
 
+def _latest_data_date(data: dict):
+    """Date la plus récente parmi les sources qui bougent quotidiennement.
+
+    On exclut volontairement miner_revenue qui a un lag structurel (~10j).
+    """
+    candidates = []
+    for key in ("btc", "fear_greed", "mvrv_z", "market_cap", "gold", "dxy"):
+        df = data.get(key)
+        if df is not None and not df.empty:
+            candidates.append(df.index[-1].date())
+    return max(candidates) if candidates else None
+
+
 # ---------------------------------------------------------------------------
 # Calcul des scores
 # ---------------------------------------------------------------------------
@@ -242,8 +255,8 @@ def main() -> None:
 
     render_header(agg, palier, verdict, days_post, days_next, kpis=kpis)
 
-    # Bandeau meta : timestamp + sources, juste sous le hero
-    render_meta_bar()
+    # Bandeau meta : date réelle des données + bouton refresh, juste sous le hero
+    render_meta_bar(_latest_data_date(data))
 
     # Navigation sticky vers les sections (sections définies par les ancres ci-dessous)
     st.markdown(

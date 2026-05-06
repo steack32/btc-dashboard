@@ -2,28 +2,70 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime
+from datetime import date, timedelta
+from pathlib import Path
 
 import streamlit as st
 
 from analysis.scoring import Verdict
-from config import PALETTE, VERDICT_COLORS
+from config import CACHE_DIR, PALETTE, VERDICT_COLORS
 from ui.charts import GAUGE_CONFIG, gauge
 
 
-def render_meta_bar() -> None:
-    """Petit bandeau sous le hero avec timestamp et sources (tooltip)."""
-    now = datetime.now().strftime("%d %b %Y · %H:%M")
-    sources_text = "yfinance, CoinMetrics, blockchain.com, bitcoin-data.com, alternative.me"
-    st.markdown(
-        f"<div class='dashboard-meta'>"
-        f"<div><span class='live-dot'></span>"
-        f"<b>Données à jour</b> · {now}</div>"
-        f"<div><span class='sources-info' title='{sources_text}'>"
-        f"5 sources publiques</span></div>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
+SOURCES_TEXT = "yfinance, CoinMetrics, blockchain.com, bitcoin-data.com, alternative.me"
+
+
+def _format_lag(last_data_date: date) -> str:
+    lag = (date.today() - last_data_date).days
+    if lag <= 0:
+        return "aujourd'hui"
+    if lag == 1:
+        return "hier"
+    return f"il y a {lag} j"
+
+
+def render_meta_bar(last_data_date: date | None = None) -> None:
+    """Bandeau sous le hero : date réelle des données + bouton de rafraîchissement.
+
+    Le bouton vide à la fois le cache disque (.parquet) et le cache Streamlit
+    en mémoire, puis relance l'app pour forcer un re-fetch des API.
+    """
+    col_meta, col_btn = st.columns([6, 1])
+
+    with col_meta:
+        if last_data_date is not None:
+            date_str = last_data_date.strftime("%d %b %Y").lower()
+            age_label = _format_lag(last_data_date)
+            html = (
+                f"<div class='dashboard-meta'>"
+                f"<div><span class='live-dot'></span>"
+                f"<b>Dernière donnée</b> · {date_str} ({age_label})</div>"
+                f"<div><span class='sources-info' title='{SOURCES_TEXT}'>"
+                f"5 sources publiques</span></div>"
+                f"</div>"
+            )
+        else:
+            html = (
+                "<div class='dashboard-meta'>"
+                "<div><span class='live-dot'></span>"
+                "<b>Données indisponibles</b></div>"
+                "</div>"
+            )
+        st.markdown(html, unsafe_allow_html=True)
+
+    with col_btn:
+        if st.button(
+            "🔄 Rafraîchir",
+            use_container_width=True,
+            help="Vider le cache et re-télécharger les données depuis les API",
+        ):
+            for f in Path(CACHE_DIR).glob("*.parquet"):
+                try:
+                    f.unlink()
+                except OSError:
+                    pass
+            st.cache_data.clear()
+            st.rerun()
 
 
 def _fmt_compact(value: float, prefix: str = "", suffix: str = "", decimals: int = 0) -> str:
@@ -125,7 +167,6 @@ def render_header(
     if days_until_next is not None and days_until_next > 0:
         total_cycle = days_since_halving + days_until_next
         pct = (days_since_halving / total_cycle * 100) if total_cycle > 0 else 0
-        from datetime import date, timedelta
         next_date = date.today() + timedelta(days=days_until_next)
         next_label = next_date.strftime("%b %Y").lower()
         st.markdown(
