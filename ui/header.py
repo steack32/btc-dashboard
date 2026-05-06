@@ -56,7 +56,7 @@ def render_meta_bar(last_data_date: date | None = None) -> None:
     with col_btn:
         if st.button(
             "🔄 Rafraîchir",
-            use_container_width=True,
+            width="stretch",
             help="Vider le cache et re-télécharger les données depuis les API",
         ):
             for f in Path(CACHE_DIR).glob("*.parquet"):
@@ -139,7 +139,7 @@ def render_header(
     col_gauge, col_verdict = st.columns([1, 1.4], gap="large")
 
     with col_gauge:
-        st.plotly_chart(gauge(score, color), use_container_width=True, config=GAUGE_CONFIG)
+        st.plotly_chart(gauge(score, color), width="stretch", config=GAUGE_CONFIG)
 
     with col_verdict:
         drivers_html = (

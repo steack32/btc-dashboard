@@ -179,7 +179,7 @@ def render_backtest(history: pd.DataFrame) -> None:
         "Le système est-il bien calibré ? Passe en revue les tops et bottoms majeurs."
     )
 
-    st.plotly_chart(_backtest_chart(history), use_container_width=True, config=CHART_CONFIG)
+    st.plotly_chart(_backtest_chart(history), width="stretch", config=CHART_CONFIG)
 
     # Stats globales
     valid = history.dropna(subset=["score"])
@@ -201,7 +201,7 @@ def render_backtest(history: pd.DataFrame) -> None:
     )
     table = extract_key_dates(history)
     if not table.empty:
-        st.dataframe(table, use_container_width=True, hide_index=True)
+        st.dataframe(table, width="stretch", hide_index=True)
 
 
 # ---------------------------------------------------------------------------
@@ -382,7 +382,7 @@ def render_strategy_simulation(
         PALETTE["success"] if strat_roi >= bh_roi else PALETTE["danger"],
     )
 
-    st.plotly_chart(_strategy_chart(sim, dca, bh), use_container_width=True, config=CHART_CONFIG)
+    st.plotly_chart(_strategy_chart(sim, dca, bh), width="stretch", config=CHART_CONFIG)
 
     caption = (
         f"Sur la période : **{n_buys} jours d'achat** ({total_bought:,.0f} € investis cumulés) · "
@@ -549,7 +549,7 @@ def render_ma200w_simulation(
         PALETTE["success"] if strat_roi >= bh_roi else PALETTE["danger"],
     )
 
-    st.plotly_chart(_ma200w_chart(sim, transitions), use_container_width=True, config=CHART_CONFIG)
+    st.plotly_chart(_ma200w_chart(sim, transitions), width="stretch", config=CHART_CONFIG)
 
     st.caption(
         "Triangles verts ↑ : retour sur le marché · triangles rouges ↓ : sortie · "

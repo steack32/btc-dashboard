@@ -44,7 +44,7 @@ def _badge(score: IndicatorScore) -> None:
 
 
 def _show(fig) -> None:
-    st.plotly_chart(fig, use_container_width=True, config=CHART_CONFIG)
+    st.plotly_chart(fig, width="stretch", config=CHART_CONFIG)
 
 
 # ---------------------------------------------------------------------------
@@ -284,4 +284,4 @@ def render_summary_table(scores_list: list[IndicatorScore]) -> None:
             "Poids": f"{s.weight*100:.0f}%",
         })
     df = pd.DataFrame(rows)
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.dataframe(df, width="stretch", hide_index=True)

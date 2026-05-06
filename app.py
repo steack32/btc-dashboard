@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import pandas as pd
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 
 from analysis import backtest as bt
 from analysis import indicators as ind
@@ -80,12 +81,19 @@ def _latest_data_date(data: dict):
     """Date la plus récente parmi les sources qui bougent quotidiennement.
 
     On exclut volontairement miner_revenue qui a un lag structurel (~10j).
+    Tolère les sources vides, manquantes, ou avec un index non-temporel
+    (peut arriver si une API rate-limite l'IP du déploiement et renvoie
+    un dataframe au format inattendu).
     """
     candidates = []
     for key in ("btc", "fear_greed", "mvrv_z", "market_cap", "gold", "dxy"):
         df = data.get(key)
-        if df is not None and not df.empty:
-            candidates.append(df.index[-1].date())
+        if df is None or getattr(df, "empty", True):
+            continue
+        try:
+            candidates.append(pd.Timestamp(df.index[-1]).date())
+        except (TypeError, ValueError, AttributeError, IndexError):
+            continue
     return max(candidates) if candidates else None
 
 
@@ -236,6 +244,11 @@ def build_kpis(data: dict, scores: dict) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    # Auto-refresh : la page se relance toute seule toutes les heures.
+    # Aligné sur le TTL du cache Streamlit (1h) — au moment où la page
+    # se rafraîchit, le cache est juste expiré, on refetch les API daily.
+    st_autorefresh(interval=3600 * 1000, key="auto_refresh")
+
     with st.spinner("Récupération des données..."):
         data = load_all_data()
 
